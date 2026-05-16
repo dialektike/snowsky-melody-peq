@@ -16,10 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   other FiiO device.
 - `parse_autoeq()` for ingesting AutoEQ `ParametricEQ.txt` files.
 - `melody-peq` CLI with `dump`, `apply`, `toggle`, `reset` subcommands.
-- Linux udev rule for non-root device access.
-- Unit tests for protocol packet building and AutoEQ parsing (no hardware
-  required).
+- Linux udev rule for non-root device access via `/dev/hidraw*`.
+- Unit tests for protocol packet building, AutoEQ parsing, and identity
+  check (no hardware required).
 - Protocol documentation in `docs/PROTOCOL.md`.
+- Korean installation guide in `docs/INSTALL.ko.md` (conda-based).
+
+### USB backend
+- Uses `hidapi` to talk to the OS HID stack directly.
+- **Windows**: no Zadig driver replacement required.
+- **macOS**: no `libusb` / Homebrew dependency.
+- **Linux**: requires only a hidraw udev rule (provided).
 
 ### Verified on
 - (none yet) Awaiting Melody verification by maintainers.

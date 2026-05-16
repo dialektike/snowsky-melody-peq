@@ -71,6 +71,12 @@ def test_parse_response_strips_report_id_and_extracts_data():
     parsed = parse_response(raw)
     assert parsed == (CMD.EQ_COUNT, bytes([5]))
 
+def test_parse_response_handles_data_without_report_id():
+    """Some hidapi platforms strip the Report ID byte before delivering."""
+    raw = bytes([GET_HEAD, 0x0B, 0, 0, CMD.EQ_COUNT, 1, 5, 0, STOP])
+    parsed = parse_response(raw)
+    assert parsed == (CMD.EQ_COUNT, bytes([5]))
+
 def test_parse_response_rejects_truncated():
     assert parse_response(b"") is None
     assert parse_response(bytes([REPORT_ID, GET_HEAD])) is None

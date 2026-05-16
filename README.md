@@ -22,11 +22,15 @@ Set the Melody's parametric EQ from a Python script or shell — no Android phon
 
 ## Installation
 
+> **한국어 설치 안내서**가 필요하시면 [`docs/INSTALL.ko.md`](docs/INSTALL.ko.md)를 참고하세요 (conda 기준).
+
 ```bash
-# Until published on PyPI:
 git clone https://github.com/YOUR_USERNAME/snowsky-melody-peq
-cd snowsky-melody-peq && pip install -e .
+cd snowsky-melody-peq
+pip install -e .
 ```
+
+That's it on macOS and Windows. The library uses [hidapi](https://github.com/libusb/hidapi) which talks to the OS's native HID stack — no `libusb`, no Zadig driver replacement.
 
 ### Linux: udev rule for non-root access
 
@@ -35,16 +39,6 @@ sudo cp udev/99-fiio.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 Replug the Melody after installing the rule.
-
-### macOS
-
-```bash
-brew install libusb
-```
-
-### Windows
-
-You may need to bind a WinUSB driver to interface 3 of the Melody using [Zadig](https://zadig.akeo.ie/). Do **not** replace the audio driver — only the HID control interface.
 
 ## Quick start
 
@@ -119,6 +113,7 @@ This library ships **only** EQ command codes (`0x15`–`0x1B`, `0x30`). It does 
 
 - [SmookeyDev/fiio-k13-control](https://github.com/SmookeyDev/fiio-k13-control) — original reverse engineering of the FiiO Control APK v4.0.3. The K13 R2R and the Melody share the same EQ command space, so the protocol documentation derived from that work applies here.
 - [AutoEq](https://github.com/jaakkopasanen/AutoEq) — community-tuned headphone PEQ database.
+- [hidapi](https://github.com/libusb/hidapi) — cross-platform HID library.
 
 ## License
 

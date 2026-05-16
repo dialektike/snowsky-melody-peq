@@ -5,15 +5,20 @@ verifies that the connected USB device identifies itself as a Melody, and
 refuses to talk to anything else. This is a safety choice: although other
 FiiO devices share the USB HID EQ protocol, only the Melody has been
 designated as in-scope for this library.
+
+The library uses ``hidapi`` to access the device through the OS HID stack,
+which avoids the WinUSB driver replacement that a raw libusb backend would
+require on Windows.
 """
 
 from __future__ import annotations
 import time
-import usb.core
-import usb.util
+from typing import Any
+
+import hid
 
 from .protocol import (
-    VENDOR_ID, INTERFACE, EP_OUT, EP_IN, HID_REPORT_SIZE, TIMEOUT_MS,
+    VENDOR_ID, HID_REPORT_SIZE, TIMEOUT_MS,
     CMD, build_get, build_set, wrap_hid_report, parse_response,
     encode_gain, decode_gain, encode_u16, decode_u16,
 )
@@ -21,14 +26,12 @@ from .types import Band, FilterType
 
 
 # ─── Melody identity ──────────────────────────────────────────
-# The USB product string is matched case-insensitively as a substring.
+# The HID product string is matched case-insensitively as a substring.
 # Add to this tuple if FiiO ships the Melody with a slightly different
 # product string (e.g. firmware variants, regional SKUs).
 MELODY_PRODUCT_KEYWORDS: tuple[str, ...] = ("melody",)
 
-# Known Melody capabilities. These are the most likely values based on the
-# device's documented PEQ UI; the library still queries the actual band count
-# from the device at runtime via get_band_count() before any batch write.
+# Known Melody capabilities.
 MELODY_USER_SLOTS = (1, 2, 3)         # USER1..USER3 → preset IDs 160..162
 MELODY_PRESET_USER1 = 160
 MELODY_PRESET_BYPASS = 240
@@ -47,7 +50,7 @@ class NotAMelodyError(MelodyPEQError):
 # ─── Controller ───────────────────────────────────────────────
 
 class MelodyPEQ:
-    """USB HID controller for the FiiO SnowSky Melody.
+    """HID controller for the FiiO SnowSky Melody.
 
     Use as a context manager:
 
@@ -64,16 +67,16 @@ class MelodyPEQ:
     Raises
     ------
     MelodyPEQError
-        No FiiO device found, or the device cannot be claimed.
+        No FiiO HID device found, or the device cannot be opened.
     NotAMelodyError
-        A FiiO device was found, but its product string did not identify it
-        as a SnowSky Melody.
+        A FiiO HID device was found, but its product string did not identify
+        it as a SnowSky Melody.
     """
 
     def __init__(self, inter_cmd_delay: float = 0.03):
         self.inter_cmd_delay = inter_cmd_delay
-        self._dev: usb.core.Device | None = None
-        self._kernel_was_attached = False
+        self._dev: Any | None = None
+        self._product_name: str = ""
 
     # ── context manager ──
     def __enter__(self) -> "MelodyPEQ":
@@ -85,68 +88,80 @@ class MelodyPEQ:
 
     # ── connection lifecycle ──
     def open(self) -> None:
-        candidates = list(usb.core.find(idVendor=VENDOR_ID, find_all=True) or [])
+        candidates = hid.enumerate(VENDOR_ID, 0) or []
         if not candidates:
             raise MelodyPEQError(
-                f"No FiiO device found (VID=0x{VENDOR_ID:04X}). "
+                f"No FiiO HID device found (VID=0x{VENDOR_ID:04X}). "
                 f"Check that the Melody is connected and powered."
             )
 
-        melody = next(
+        melody_info = next(
             (
-                dev for dev in candidates
-                if any(kw in (dev.product or "").lower()
-                       for kw in MELODY_PRODUCT_KEYWORDS)
+                info for info in candidates
+                if any(
+                    kw in (info.get("product_string") or "").lower()
+                    for kw in MELODY_PRODUCT_KEYWORDS
+                )
             ),
             None,
         )
-        if melody is None:
-            names = [dev.product or "<unnamed>" for dev in candidates]
+        if melody_info is None:
+            names = [info.get("product_string") or "<unnamed>" for info in candidates]
             raise NotAMelodyError(
                 f"Connected FiiO device(s) are not a SnowSky Melody: {names}. "
                 f"This library only supports the Melody."
             )
 
-        self._dev = melody
-        if self._dev.is_kernel_driver_active(INTERFACE):
-            self._dev.detach_kernel_driver(INTERFACE)
-            self._kernel_was_attached = True
-        usb.util.claim_interface(self._dev, INTERFACE)
+        self._product_name = melody_info.get("product_string") or ""
+        device = hid.device()
+        try:
+            device.open_path(melody_info["path"])
+        except OSError as e:
+            raise MelodyPEQError(
+                f"Failed to open Melody HID device: {e}. "
+                f"On Linux, check udev rules; on Windows, close any other app "
+                f"holding the device (e.g. FiiO Control)."
+            ) from e
+        self._dev = device
 
     def close(self) -> None:
-        if not self._dev:
+        if self._dev is None:
             return
         try:
-            usb.util.release_interface(self._dev, INTERFACE)
-            if self._kernel_was_attached:
-                self._dev.attach_kernel_driver(INTERFACE)
+            self._dev.close()
         except Exception:
             pass
         self._dev = None
-        self._kernel_was_attached = False
+        self._product_name = ""
 
     @property
     def name(self) -> str:
-        return self._dev.product if self._dev else ""
+        return self._product_name
 
     # ── low-level transport ──
     def _drain(self) -> None:
+        if self._dev is None:
+            return
         try:
             while True:
-                self._dev.read(EP_IN, HID_REPORT_SIZE, timeout=30)
-        except (usb.core.USBTimeoutError, usb.core.USBError):
+                data = self._dev.read(HID_REPORT_SIZE, timeout_ms=10)
+                if not data:
+                    break
+        except OSError:
             pass
 
     def _exchange(self, packet: bytes, expect_cmd: int) -> bytes | None:
         if self._dev is None:
             raise MelodyPEQError("Device not open. Call .open() or use 'with'.")
         self._drain()
-        self._dev.write(EP_OUT, wrap_hid_report(packet), timeout=500)
+        # hidapi's write() expects the report ID as the first byte, which
+        # wrap_hid_report() already provides.
+        self._dev.write(wrap_hid_report(packet))
         for _ in range(2):
-            try:
-                raw = bytes(self._dev.read(EP_IN, HID_REPORT_SIZE, timeout=TIMEOUT_MS))
-            except usb.core.USBTimeoutError:
+            data = self._dev.read(HID_REPORT_SIZE, timeout_ms=TIMEOUT_MS)
+            if not data:
                 return None
+            raw = bytes(data)
             parsed = parse_response(raw)
             if parsed and parsed[0] == expect_cmd:
                 return raw

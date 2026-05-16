@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: System :: Hardware :: Hardware Drivers",
 ]
 dependencies = [
-    "pyusb>=1.2",
+    "hidapi>=0.14",
 ]
 
 [project.optional-dependencies]

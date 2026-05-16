@@ -6,8 +6,11 @@ Protocol spec (reverse-engineered from FiiO Control APK v4.0.3):
   SET request : [0xAA, 0x0A, 0x00, 0x00, CMD, LEN, ...DATA, 0x00, 0xEE]
   GET response: [0xBB, 0x0B, 0x00, 0x00, CMD, LEN, ...DATA, 0x00, 0xEE]
 
-The packet is then wrapped into a USB HID OUT report with Report ID 0x07
-and padded to 65 bytes (1-byte report ID + 64-byte payload).
+The packet is wrapped into a HID OUT report with Report ID 0x07 and padded to
+65 bytes (1 Report ID byte + 64 payload bytes). The underlying USB interface,
+endpoints, and HID report descriptor are documented in docs/PROTOCOL.md, but
+this module talks at the HID-report layer only — endpoint addressing is
+handled by the OS HID stack via the ``hidapi`` library.
 
 EQ command codes (single byte):
     0x15  EQ_BAND        per-band parameters
@@ -22,14 +25,13 @@ EQ command codes (single byte):
 
 from __future__ import annotations
 
-# ─── USB descriptor constants ──────────────────────────────
-VENDOR_ID  = 0x2972
-INTERFACE  = 3
-EP_OUT     = 0x02
-EP_IN      = 0x83
-REPORT_ID  = 0x07
-HID_REPORT_SIZE = 65   # 1 report-ID byte + 64 payload bytes
-TIMEOUT_MS = 300
+# ─── USB identification ────────────────────────────────────
+VENDOR_ID = 0x2972
+
+# ─── HID report layout ─────────────────────────────────────
+REPORT_ID       = 0x07
+HID_REPORT_SIZE = 65       # 1 report-ID byte + 64 payload bytes
+TIMEOUT_MS      = 300
 
 # ─── Packet framing ────────────────────────────────────────
 GET_HEAD,  GET_START = 0xBB, 0x0B
@@ -78,7 +80,7 @@ def build_set(cmd: int, data: bytes = b"") -> bytes:
     return bytes([SET_HEAD, SET_START, 0, 0, cmd, len(data)]) + data + bytes([0, STOP])
 
 def wrap_hid_report(packet: bytes, size: int = HID_REPORT_SIZE) -> bytes:
-    """Wrap a protocol packet in a USB HID OUT report.
+    """Wrap a protocol packet in a HID OUT report.
 
     Layout: [Report ID, ...packet bytes, zero padding to `size`].
     """
@@ -92,7 +94,11 @@ def wrap_hid_report(packet: bytes, size: int = HID_REPORT_SIZE) -> bytes:
 # ─── Response parsing ──────────────────────────────────────
 
 def strip_report_id(resp: bytes) -> bytes:
-    """Remove leading Report ID byte if present."""
+    """Remove leading Report ID byte if present.
+
+    ``hidapi`` strips the Report ID on most platforms but not all, so we
+    handle both cases defensively.
+    """
     return resp[1:] if resp and resp[0] == REPORT_ID else resp
 
 def parse_response(resp: bytes) -> tuple[int, bytes] | None:

@@ -25,7 +25,8 @@ Typical user goals:
   an identity check at `open()` and raises `NotAMelodyError` for any other
   FiiO device. Do not "patch this out" or recommend removing the check.
 - No firmware updates, SPDIF toggle, DAC filter, or any non-EQ setting. Those
-  are out of scope.
+  are available in the official FiiO Control app and intentionally not in scope
+  here for safety reasons.
 - No support for non-FiiO devices.
 - No analog audio I/O. This is control-plane only.
 
@@ -34,12 +35,25 @@ do not add multi-device support to this codebase.
 
 ## Verified facts (do not re-search)
 
-- Vendor ID: `0x2972`, Interface 3, EP_OUT `0x02`, EP_IN `0x83`, Report ID `0x07`.
+- Vendor ID: `0x2972`.
+- USB HID interface 3, Report ID `0x07`, 65-byte HID reports.
+  These details are documented in `docs/PROTOCOL.md` but are not used directly
+  by the Python code — the OS HID stack handles endpoint addressing via the
+  `hidapi` library.
 - Packet framing: `[0xBB|0xAA, 0x0B|0x0A, 0, 0, CMD, LEN, ...DATA, 0, 0xEE]`.
 - EQ command codes: `0x15..0x1B`, `0x30`. Details in [`PROTOCOL.md`](PROTOCOL.md).
 - Source of reverse engineering: `github.com/SmookeyDev/fiio-k13-control` (MIT).
 - Melody USER slots: 1, 2, 3 (preset IDs 160, 161, 162).
 - Melody is USB-only — no BLE control path.
+
+## USB backend
+
+The library uses [`hidapi`](https://github.com/libusb/hidapi). Key consequences:
+
+- No Zadig driver replacement is needed on Windows.
+- No `libusb` system dependency on macOS/Linux (wheels usually suffice).
+- Linux requires a `KERNEL=="hidraw*"` udev rule (provided in `udev/`).
+- If a user has hardware issues, the first diagnostic is `hid.enumerate(0x2972, 0)`.
 
 ## Public API surface
 
@@ -74,6 +88,10 @@ First diagnostic: ask the user for the output of `melody-peq dump`. If it
 raises `NotAMelodyError`, their connected FiiO device is not a Melody — point
 them to other projects (or suggest forking).
 
+If it raises `MelodyPEQError: Failed to open Melody HID device`, check:
+- Linux: udev rule installed and device replugged?
+- Windows: is the FiiO Control desktop app or web tab holding the device?
+
 ### "Can it do X?" where X is non-EQ
 
 Refer to the "What this project does NOT do" section. If the user needs SPDIF
@@ -92,6 +110,8 @@ No. This project is Melody-only by design. The protocol is documented in
 - Removing the Melody identity check to use the library with other devices.
 - Running multiple `MelodyPEQ` instances against the same device concurrently.
 - Hot-replugging during a write.
+- Re-introducing `pyusb` as the USB backend — the project deliberately uses
+  `hidapi` to avoid driver replacement on Windows.
 
 ## When in doubt
 

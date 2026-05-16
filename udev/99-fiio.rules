@@ -1,8 +1,9 @@
-# Allow non-root access to FiiO USB devices for fiio-peq.
+# Allow non-root access to FiiO HID devices via /dev/hidraw* for
+# snowsky-melody-peq.
 #
 # Install:
 #   sudo cp 99-fiio.rules /etc/udev/rules.d/
 #   sudo udevadm control --reload-rules && sudo udevadm trigger
 #
 # Replug the device after installing.
-SUBSYSTEM=="usb", ATTR{idVendor}=="2972", MODE="0666"
+KERNEL=="hidraw*", ATTRS{idVendor}=="2972", MODE="0666"
