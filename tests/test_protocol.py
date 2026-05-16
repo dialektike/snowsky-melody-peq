@@ -1,11 +1,21 @@
 """Unit tests for the protocol layer. These do not require a real device."""
 
 from snowsky_melody_peq.protocol import (
-    CMD, GET_HEAD, SET_HEAD, STOP, REPORT_ID, HID_REPORT_SIZE,
-    build_get, build_set, wrap_hid_report, parse_response,
-    encode_gain, decode_gain, encode_u16, decode_u16,
+    CMD,
+    GET_HEAD,
+    HID_REPORT_SIZE,
+    REPORT_ID,
+    SET_HEAD,
+    STOP,
+    build_get,
+    build_set,
+    decode_gain,
+    decode_u16,
+    encode_gain,
+    encode_u16,
+    parse_response,
+    wrap_hid_report,
 )
-
 
 # ─── encoders ────────────────────────────────────────────
 
@@ -78,6 +88,13 @@ def test_wrap_hid_report_size_and_prefix():
     assert report[0] == REPORT_ID
     assert report[1:1 + len(pkt)] == pkt
     assert all(b == 0 for b in report[1 + len(pkt):])
+
+
+def test_wrap_hid_report_rejects_oversized_packet():
+    import pytest
+    oversize = bytes([0xAA]) * (HID_REPORT_SIZE)  # payload capacity is size-1
+    with pytest.raises(ValueError, match="exceeds HID payload capacity"):
+        wrap_hid_report(oversize)
 
 
 # ─── response parser ─────────────────────────────────────

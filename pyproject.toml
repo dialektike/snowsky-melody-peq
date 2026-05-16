@@ -58,6 +58,15 @@ target-version = "py310"
 select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501"]
 
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = ["hid"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"

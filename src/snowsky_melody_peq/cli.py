@@ -10,13 +10,14 @@ Examples
 """
 
 from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path
 
 from . import __version__
 from .autoeq import parse_autoeq
-from .controller import MelodyPEQ, MelodyPEQError, MELODY_USER_SLOTS
+from .controller import MELODY_USER_SLOTS, MelodyPEQ, MelodyPEQError
 
 
 def _cmd_dump(_: argparse.Namespace) -> int:

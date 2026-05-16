@@ -1,6 +1,7 @@
 """Public data types for fiio-peq."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import IntEnum
 

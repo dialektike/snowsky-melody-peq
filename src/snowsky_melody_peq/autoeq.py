@@ -13,6 +13,7 @@ This module parses such files into the ``Band`` data type used by ``fiio_peq``.
 """
 
 from __future__ import annotations
+
 import re
 from pathlib import Path
 

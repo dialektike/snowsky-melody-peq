@@ -68,6 +68,20 @@ def test_open_with_unnamed_device_raises():
             dev.open()
 
 
+def test_open_rejects_substring_false_match():
+    """Word-boundary match: 'MelodyControl' must NOT be treated as a Melody."""
+    with patch("snowsky_melody_peq.controller.hid.enumerate",
+               return_value=[_hid_info("FiiO MelodyControl")]):
+        dev = MelodyPEQ()
+        with pytest.raises(NotAMelodyError):
+            dev.open()
+
+
+def test_inter_cmd_delay_rejects_negative():
+    with pytest.raises(ValueError, match="non-negative"):
+        MelodyPEQ(inter_cmd_delay=-0.1)
+
+
 def test_open_failure_wraps_oserror():
     fake_hid = MagicMock()
     fake_hid.open_path.side_effect = OSError("Permission denied")

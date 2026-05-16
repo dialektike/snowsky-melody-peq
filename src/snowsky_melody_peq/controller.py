@@ -12,24 +12,46 @@ require on Windows.
 """
 
 from __future__ import annotations
+
+import re
 import time
 from typing import Any
 
 import hid
 
 from .protocol import (
-    VENDOR_ID, HID_REPORT_SIZE, TIMEOUT_MS,
-    CMD, build_get, build_set, wrap_hid_report, parse_response,
-    encode_gain, decode_gain, encode_u16, decode_u16,
+    CMD,
+    HID_REPORT_SIZE,
+    TIMEOUT_MS,
+    VENDOR_ID,
+    build_get,
+    build_set,
+    decode_gain,
+    decode_u16,
+    encode_gain,
+    encode_u16,
+    parse_response,
+    wrap_hid_report,
 )
 from .types import Band, FilterType
 
-
 # ─── Melody identity ──────────────────────────────────────────
-# The HID product string is matched case-insensitively as a substring.
-# Add to this tuple if FiiO ships the Melody with a slightly different
-# product string (e.g. firmware variants, regional SKUs).
+# The HID product string is matched case-insensitively as a whole word, so
+# that "SnowSky Melody" matches but a hypothetical future "MelodyControl"
+# or "MelodyEdition K3" would not. Add to this tuple if FiiO ships the
+# Melody with a slightly different product string (firmware variants,
+# regional SKUs).
 MELODY_PRODUCT_KEYWORDS: tuple[str, ...] = ("melody",)
+_MELODY_PRODUCT_RE = re.compile(
+    r"\b(" + "|".join(re.escape(k) for k in MELODY_PRODUCT_KEYWORDS) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_melody_product_string(s: str | None) -> bool:
+    if not s:
+        return False
+    return _MELODY_PRODUCT_RE.search(s) is not None
 
 # Known Melody capabilities.
 MELODY_USER_SLOTS = (1, 2, 3)         # USER1..USER3 → preset IDs 160..162
@@ -74,12 +96,16 @@ class MelodyPEQ:
     """
 
     def __init__(self, inter_cmd_delay: float = 0.03):
+        if inter_cmd_delay < 0:
+            raise ValueError(
+                f"inter_cmd_delay must be non-negative, got {inter_cmd_delay}"
+            )
         self.inter_cmd_delay = inter_cmd_delay
         self._dev: Any | None = None
         self._product_name: str = ""
 
     # ── context manager ──
-    def __enter__(self) -> "MelodyPEQ":
+    def __enter__(self) -> MelodyPEQ:
         self.open()
         return self
 
@@ -98,10 +124,7 @@ class MelodyPEQ:
         melody_info = next(
             (
                 info for info in candidates
-                if any(
-                    kw in (info.get("product_string") or "").lower()
-                    for kw in MELODY_PRODUCT_KEYWORDS
-                )
+                if _is_melody_product_string(info.get("product_string"))
             ),
             None,
         )

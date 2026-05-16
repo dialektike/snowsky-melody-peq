@@ -97,11 +97,17 @@ def wrap_hid_report(packet: bytes, size: int = HID_REPORT_SIZE) -> bytes:
     """Wrap a protocol packet in a HID OUT report.
 
     Layout: [Report ID, ...packet bytes, zero padding to `size`].
+
+    Raises ValueError if the packet exceeds the report payload capacity.
+    Truncating silently would mask protocol bugs upstream.
     """
+    if len(packet) > size - 1:
+        raise ValueError(
+            f"packet of {len(packet)} bytes exceeds HID payload capacity {size - 1}"
+        )
     buf = bytearray(size)
     buf[0] = REPORT_ID
-    payload = packet[: size - 1]
-    buf[1 : 1 + len(payload)] = payload
+    buf[1 : 1 + len(packet)] = packet
     return bytes(buf)
 
 
