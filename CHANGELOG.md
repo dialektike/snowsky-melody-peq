@@ -12,15 +12,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `MelodyPEQ` controller with the full EQ command set: read/write bands,
   pre-amp, presets, EQ on/off, save to USER slot (1-3), reset.
-- Melody identity check at connection time. Raises `NotAMelodyError` for any
-  other FiiO device.
+- Melody identity check at connection time, using a case-insensitive
+  word-boundary regex on the HID product string. Raises `NotAMelodyError`
+  for any other FiiO device.
 - `parse_autoeq()` for ingesting AutoEQ `ParametricEQ.txt` files.
 - `melody-peq` CLI with `dump`, `apply`, `toggle`, `reset` subcommands.
 - Linux udev rule for non-root device access via `/dev/hidraw*`.
-- Unit tests for protocol packet building, AutoEQ parsing, and identity
-  check (no hardware required).
-- Protocol documentation in `docs/PROTOCOL.md`.
+- Unit tests (43 total) covering protocol packet building, AutoEQ parsing,
+  Band/encoder validation, identity check, and getter behaviour on
+  unresponsive commands. No hardware required.
+- Protocol documentation in `docs/PROTOCOL.md`, including Melody-specific
+  hardware-observed quirks.
 - Korean installation guide in `docs/INSTALL.ko.md` (conda-based).
+- AI assistant guide in `docs/AI_ASSISTANT_GUIDE.md`.
+- PEP 561 `py.typed` marker so downstream type checkers see the type hints.
+- `[tool.mypy]` config in `pyproject.toml`; `mypy src/` is clean.
+
+### Defensive validation
+- `Band.__post_init__` rejects out-of-range freq / gain / Q and coerces
+  `filter_type` ints to `FilterType` (raises `ValueError` on invalid).
+- `encode_u16` and `encode_gain` raise `ValueError` on overflow rather than
+  silently wrapping to 16 bits.
+- `wrap_hid_report` raises `ValueError` on packets that exceed the HID
+  payload capacity (instead of silently truncating).
+- `MelodyPEQ(inter_cmd_delay=...)` rejects negative values at construction.
+- CLI handles `FileNotFoundError` / `OSError` / `ValueError` with a friendly
+  message and exit code 2 instead of leaking a traceback.
+
+### Getter contract
+- Every scalar getter (`get_band_count`, `get_eq_enabled`, `get_preset`,
+  `get_preamp`, `get_preset_name`) returns `T | None`. `None` means the
+  device did not respond to the query — it is **not** a default value.
+  Previously these silently returned `False`/`0`/`-1`/`0.0`/`""`, which made
+  "no response" indistinguishable from a real reading.
+- `melody-peq dump` renders `None` as `unknown (no response)`.
 
 ### USB backend
 - Uses `hidapi` to talk to the OS HID stack directly.
@@ -29,9 +54,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linux**: requires only a hidraw udev rule (provided).
 
 ### Verified on
-- (none yet) Awaiting Melody verification by maintainers.
+- macOS (darwin, arm64) with Python 3.12 + hidapi 0.15.0 on a SnowSky
+  Melody. `melody-peq dump` returns a coherent read of all 10 bands,
+  pre-amp, and preset.
 
-### Known limitations
-- Hardware verification of Melody-specific band count and USER slot range
-  has not been completed at the time of release. Values in code reflect best
-  knowledge from FiiO documentation and the K13 R2R protocol analysis.
+### Known limitations / hardware findings
+- The Melody **does not respond to `CMD.EQ_SWITCH` (0x1A)** — GET nor SET.
+  `get_eq_enabled()` therefore returns `None` on Melody, and
+  `set_eq_enabled()` cannot be verified. The Melody's actual EQ bypass
+  mechanism is undocumented; `Preset = 240` is the likely route.
+- The Melody reports **10 PEQ bands**, not the 5 that some older
+  documentation suggested.
+- Preset IDs **outside the documented `160..162` / `240` set** have been
+  observed in practice (`0`, `9`). These appear when the user has tuned
+  via the FiiO web interface without saving to a USER slot. Treat any value
+  outside the documented set as opaque.
+- Persisting bands via `save_to_user()` has not yet been hardware-verified
+  end-to-end (write + reboot survival check).

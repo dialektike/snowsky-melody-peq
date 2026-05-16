@@ -84,7 +84,7 @@ See [`examples/`](examples/) for more.
 
 | Method | Purpose |
 |---|---|
-| `get_band_count() / get_eq_enabled() / get_preset() / get_preamp()` | Read state |
+| `get_band_count() / get_eq_enabled() / get_preset() / get_preamp()` | Read state — returns `T \| None` (`None` = no device response) |
 | `get_band(i) / get_all_bands()` | Read PEQ bands |
 | `set_eq_enabled(on) / set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | Set state |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | Write PEQ |
@@ -92,7 +92,18 @@ See [`examples/`](examples/) for more.
 
 `FilterType` values: `PEAK`, `LOW_SHELF`, `HIGH_SHELF`, `BAND_PASS`, `LOW_PASS`, `HIGH_PASS`, `ALL_PASS`.
 
-The Melody exposes USER slots 1–3 (preset IDs `160..162`). Preset ID `240` is bypass. Factory presets (`0..10`) are read-only.
+`Band` validates its arguments at construction: `freq` 20–20000 Hz, `gain`
+±24 dB, `Q` 0.01–100. Out-of-range values raise `ValueError`.
+
+The Melody exposes USER slots 1–3 (preset IDs `160..162`). Preset ID `240` is bypass. Factory presets (`0..10`) are read-only. In practice the device also reports IDs like `0` or `9` for an unsaved live tuning — treat anything outside the documented set as opaque.
+
+### Melody-specific quirks (observed on real hardware)
+
+- The Melody **does not respond to `EQ_SWITCH` (CMD `0x1A`)**, so
+  `get_eq_enabled()` returns `None` on Melody. `set_eq_enabled()` cannot be
+  verified by readback — see `docs/PROTOCOL.md` for the full list of
+  observed quirks.
+- The Melody reports **10 PEQ bands**.
 
 ## How it works
 
