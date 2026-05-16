@@ -24,13 +24,37 @@ Set the Melody's parametric EQ from a Python script or shell — no Android phon
 
 > **한국어 설치 안내서**가 필요하시면 [`docs/INSTALL.ko.md`](docs/INSTALL.ko.md)를 참고하세요 (conda 기준).
 
+Install into an isolated virtual environment so the project's dependencies (notably `hidapi`) don't collide with your system Python.
+
+**With conda** (recommended if you already use it):
+
 ```bash
+conda create -n melody python=3.12 -y
+conda activate melody
+
 git clone https://github.com/dialektike/snowsky-melody-peq
 cd snowsky-melody-peq
 pip install -e .
 ```
 
-That's it on macOS and Windows. The library uses [hidapi](https://github.com/libusb/hidapi) which talks to the OS's native HID stack — no `libusb`, no Zadig driver replacement.
+**With venv** (Python stdlib, no extra tools):
+
+```bash
+git clone https://github.com/dialektike/snowsky-melody-peq
+cd snowsky-melody-peq
+
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e .
+```
+
+Verify:
+
+```bash
+melody-peq --version
+```
+
+That's it on macOS and Windows. The library uses [hidapi](https://github.com/libusb/hidapi) which talks to the OS's native HID stack — no `libusb`, no Zadig driver replacement. Each new shell will need `conda activate melody` (or `source .venv/bin/activate`) before `melody-peq` is on PATH.
 
 ### Linux: udev rule for non-root access
 
