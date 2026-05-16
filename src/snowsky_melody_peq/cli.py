@@ -99,6 +99,12 @@ def main(argv: list[str] | None = None) -> int:
     except MelodyPEQError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
+    except FileNotFoundError as e:
+        print(f"error: file not found: {e.filename}", file=sys.stderr)
+        return 2
+    except (OSError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

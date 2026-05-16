@@ -29,6 +29,22 @@ def test_encode_u16_roundtrip():
         assert decode_u16(hi, lo) == v
 
 
+def test_encode_u16_rejects_overflow():
+    import pytest
+    with pytest.raises(ValueError, match="out of range"):
+        encode_u16(0x10000)        # one past max
+    with pytest.raises(ValueError, match="out of range"):
+        encode_u16(-1)             # negative
+
+
+def test_encode_gain_rejects_overflow():
+    import pytest
+    with pytest.raises(ValueError, match="i16 range"):
+        encode_gain(4000.0)        # 40000 > 32767
+    with pytest.raises(ValueError, match="i16 range"):
+        encode_gain(-4000.0)
+
+
 # ─── packet builders ─────────────────────────────────────
 
 def test_build_get_minimal():

@@ -54,8 +54,15 @@ class CMD:
 # ─── Numeric encoders/decoders ─────────────────────────────
 
 def encode_gain(db: float) -> tuple[int, int]:
-    """dB → i16 BE, ×10. Range -24.0 .. +12.0 typical."""
-    raw = int(round(db * 10)) & 0xFFFF
+    """dB → i16 BE, ×10. Range -24.0 .. +12.0 typical.
+
+    Raises ValueError if ``db × 10`` does not fit in a signed 16-bit
+    integer, so that out-of-range gains do not silently wrap on the wire.
+    """
+    raw = int(round(db * 10))
+    if not -0x8000 <= raw <= 0x7FFF:
+        raise ValueError(f"gain {db} dB out of i16 range after ×10 encoding")
+    raw &= 0xFFFF
     return (raw >> 8) & 0xFF, raw & 0xFF
 
 def decode_gain(b1: int, b2: int) -> float:
@@ -63,6 +70,13 @@ def decode_gain(b1: int, b2: int) -> float:
     return -((raw ^ 0xFFFF) + 1) / 10.0 if raw & 0x8000 else raw / 10.0
 
 def encode_u16(v: int) -> tuple[int, int]:
+    """Big-endian unsigned 16-bit encoding.
+
+    Raises ValueError if ``v`` is outside 0..65535, so that overflows
+    (e.g. ``Q × 100`` with Q > 655.35) do not silently wrap.
+    """
+    if not 0 <= v <= 0xFFFF:
+        raise ValueError(f"u16 value {v} out of range 0..65535")
     return (v >> 8) & 0xFF, v & 0xFF
 
 def decode_u16(b1: int, b2: int) -> int:
