@@ -197,33 +197,43 @@ class MelodyPEQ:
         return self._exchange(build_set(cmd, data), cmd)
 
     # ─────────────────────────── GET API ───────────────────────────
+    #
+    # Getters return ``None`` when the device does not answer the query, so
+    # that callers can distinguish a real device value (e.g. "EQ off",
+    # "0 bands") from a missing response. Verified on real hardware: the
+    # SnowSky Melody does not respond to ``CMD.EQ_SWITCH`` (0x1A) GET/SET,
+    # so ``get_eq_enabled()`` returns ``None`` on Melody.
 
-    def get_band_count(self) -> int:
-        """Number of PEQ bands the Melody supports.
+    def get_band_count(self) -> int | None:
+        """Number of PEQ bands the Melody supports, or None if not answered.
 
         Queried from the device rather than assumed, since firmware updates
         may change this.
         """
         resp = self._get(CMD.EQ_COUNT)
         p = parse_response(resp) if resp else None
-        return p[1][0] if p and p[1] else 0
+        return p[1][0] if p and p[1] else None
 
-    def get_eq_enabled(self) -> bool:
+    def get_eq_enabled(self) -> bool | None:
+        """EQ on/off, or None if the device did not respond."""
         resp = self._get(CMD.EQ_SWITCH)
         p = parse_response(resp) if resp else None
-        return bool(p[1][0]) if p and p[1] else False
+        return bool(p[1][0]) if p and p[1] else None
 
-    def get_preset(self) -> int:
-        """Current preset ID. 160-162 = USER1..USER3, 240 = bypass."""
+    def get_preset(self) -> int | None:
+        """Current preset ID, or None if not answered.
+
+        Known values: 160-162 = USER1..USER3, 240 = bypass.
+        """
         resp = self._get(CMD.EQ_PRESET)
         p = parse_response(resp) if resp else None
-        return p[1][0] if p and p[1] else -1
+        return p[1][0] if p and p[1] else None
 
-    def get_preamp(self) -> float:
-        """Global pre-amp gain in dB."""
+    def get_preamp(self) -> float | None:
+        """Global pre-amp gain in dB, or None if not answered."""
         resp = self._get(CMD.EQ_GAIN)
         p = parse_response(resp) if resp else None
-        return decode_gain(p[1][0], p[1][1]) if p and len(p[1]) >= 2 else 0.0
+        return decode_gain(p[1][0], p[1][1]) if p and len(p[1]) >= 2 else None
 
     def get_band(self, index: int) -> Band | None:
         resp = self._get(CMD.EQ_BAND, bytes([index]))
@@ -240,19 +250,24 @@ class MelodyPEQ:
         )
 
     def get_all_bands(self) -> list[Band]:
+        """Read all bands. Returns an empty list if band count is unknown."""
+        count = self.get_band_count()
+        if not count:
+            return []
         bands: list[Band] = []
-        for i in range(self.get_band_count()):
+        for i in range(count):
             b = self.get_band(i)
             if b is not None:
                 bands.append(b)
             time.sleep(self.inter_cmd_delay)
         return bands
 
-    def get_preset_name(self, index: int) -> str:
+    def get_preset_name(self, index: int) -> str | None:
+        """Preset display name, or None if the device did not respond."""
         resp = self._get(CMD.PRESET_NAME, bytes([index]))
         p = parse_response(resp) if resp else None
         if not p or len(p[1]) < 2:
-            return ""
+            return None
         return bytes(p[1][1:]).decode("utf-8", errors="replace").rstrip("\x00")
 
     # ─────────────────────────── SET API ───────────────────────────

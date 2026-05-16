@@ -23,10 +23,14 @@ from .controller import MELODY_USER_SLOTS, MelodyPEQ, MelodyPEQError
 def _cmd_dump(_: argparse.Namespace) -> int:
     with MelodyPEQ() as dev:
         print(f"Device  : {dev.name}")
-        print(f"EQ on   : {dev.get_eq_enabled()}")
-        print(f"Preset  : {dev.get_preset()}")
-        print(f"Pre-amp : {dev.get_preamp():+.1f} dB")
-        print(f"Bands   : {dev.get_band_count()}")
+        eq = dev.get_eq_enabled()
+        print(f"EQ on   : {eq if eq is not None else 'unknown (no response)'}")
+        preset = dev.get_preset()
+        print(f"Preset  : {preset if preset is not None else 'unknown (no response)'}")
+        preamp = dev.get_preamp()
+        print(f"Pre-amp : {f'{preamp:+.1f} dB' if preamp is not None else 'unknown (no response)'}")
+        count = dev.get_band_count()
+        print(f"Bands   : {count if count is not None else 'unknown (no response)'}")
         print()
         for band in dev.get_all_bands():
             print(f"  {band}")
@@ -38,6 +42,10 @@ def _cmd_apply(args: argparse.Namespace) -> int:
     print(f"Parsed: preamp={preamp:+.1f} dB, {len(bands)} bands")
     with MelodyPEQ() as dev:
         n = dev.get_band_count()
+        if n is None:
+            raise MelodyPEQError(
+                "Could not read the device's PEQ band count; refusing to apply."
+            )
         if len(bands) > n:
             print(f"Warning: Melody has {n} bands; truncating from {len(bands)}",
                   file=sys.stderr)

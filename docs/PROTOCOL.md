@@ -108,11 +108,27 @@ this range are reserved for devices with more user storage.
 ## Melody-specific notes
 
 - The Melody is USB-only — there is no BLE control path, so settings that on
-  the K13 R2R live on BLE (SPDIF toggle, etc.) are not part of the EQ subset
-  documented here and are not implemented by this library.
-- The library's `MelodyPEQ` controller queries `EQ_COUNT` at runtime rather
-  than assuming a fixed band count. The Melody is expected to report 5 bands,
-  but this has not been hardware-verified.
+  the K13 R2R live on BLE (SPDIF toggle, input source, etc.) are not part of
+  the EQ subset documented here and are not implemented by this library.
+- The Melody reports **10 PEQ bands** (verified on hardware), not the 5 that
+  some older documentation suggests. `MelodyPEQ` queries `EQ_COUNT` at runtime
+  so this is handled transparently.
+- The Melody **does not respond to `EQ_SWITCH` (0x1A)** — neither GET nor SET
+  produces a response. Verified on hardware. The mechanism it uses for EQ
+  bypass is undocumented; `Preset = 240` (bypass) may be the intended path.
+  As a result, `get_eq_enabled()` returns `None` on Melody, and `set_eq_enabled()`
+  cannot be relied upon.
+- The Melody's GET responses contain non-zero bytes in positions that the K13
+  protocol documents as `0x00` padding (e.g. byte 3 of the response, and the
+  byte before the `0xEE` stop sentinel). The library's response parser only
+  reads the `CMD` and `LEN` fields, so these bytes do not affect decoding,
+  but they hint that the Melody firmware uses those bytes for an as-yet
+  undocumented purpose.
+- The Melody exposes preset IDs outside the documented `160..162` / `240`
+  range. Values like `0` and `9` have been observed in the wild for an
+  unsaved live/custom state and possibly a "last touched band index" echo.
+  These are not yet understood; treat any value outside the documented set
+  as opaque.
 
 ## Worked example
 
