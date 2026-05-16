@@ -72,19 +72,26 @@ Melody를 USB로 연결한 상태에서:
 melody-peq dump
 ```
 
-다음과 같은 출력이 나오면 성공입니다:
+다음과 같은 출력이 나오면 성공입니다 (밴드 수치는 디바이스 상태에 따라 다름):
 
 ```
-Device  : SnowSky Melody
-EQ on   : True
-Preset  : 160
-Pre-amp : +0.0 dB
-Bands   : 5
+Device  : SNOWSKY Melody
+EQ on   : unknown (no response)
+Preset  : 0
+Pre-amp : -3.0 dB
+Bands   : 10
 
-  Band 0: 31Hz +0.0dB Q=0.71 LOW_SHELF
-  Band 1: 125Hz +0.0dB Q=0.71 PEAK
+  Band 0: 30Hz +3.5dB Q=0.61 LOW_SHELF
+  Band 1: 52Hz +1.2dB Q=1.89 PEAK
   ...
+  Band 9: 3735Hz +1.8dB Q=0.70 HIGH_SHELF
 ```
+
+> **출력에 대해 알아둘 점**
+>
+> - `EQ on : unknown (no response)`는 정상입니다. Melody는 `EQ_SWITCH` 쿼리에 응답하지 않는 펌웨어 특성을 가지고 있어서 라이브러리가 EQ on/off 상태를 알 수 없음을 정직하게 표시합니다.
+> - `Preset` 값이 `0` 또는 `9` 같은 작은 숫자로 나올 수 있습니다. 이는 웹/앱에서 튜닝한 후 USER 슬롯에 저장하지 않은 라이브 상태일 때 나타납니다. `160..162`는 USER1..USER3 슬롯, `240`은 bypass입니다.
+> - `Bands : 10`은 정상입니다 (Melody는 10밴드 PEQ).
 
 ---
 

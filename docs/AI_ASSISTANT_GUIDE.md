@@ -43,8 +43,33 @@ do not add multi-device support to this codebase.
 - Packet framing: `[0xBB|0xAA, 0x0B|0x0A, 0, 0, CMD, LEN, ...DATA, 0, 0xEE]`.
 - EQ command codes: `0x15..0x1B`, `0x30`. Details in [`PROTOCOL.md`](PROTOCOL.md).
 - Source of reverse engineering: `github.com/SmookeyDev/fiio-k13-control` (MIT).
+  Note: SmookeyDev controls SPDIF/input source over **BLE**, not USB HID;
+  USB HID in that project is EQ-only. Melody is USB-only, so the SmookeyDev
+  BLE codes are not directly portable.
 - Melody USER slots: 1, 2, 3 (preset IDs 160, 161, 162).
 - Melody is USB-only — no BLE control path.
+
+## Hardware-verified Melody quirks
+
+These are observed behaviours on real Melody hardware, not assumptions:
+
+- **10 PEQ bands**, not the 5 some older notes suggest. `get_band_count()`
+  confirms this on connection.
+- **`CMD.EQ_SWITCH` (0x1A) is silently unsupported.** Neither GET nor SET
+  receives a response on Melody. As a consequence:
+  - `get_eq_enabled()` returns `None` on Melody (not `False`).
+  - `set_eq_enabled(...)` will appear to "succeed" at the call site but the
+    library cannot verify the change took effect.
+  - The mechanism Melody actually uses for EQ bypass is undocumented;
+    `set_preset(240)` (bypass) may be the intended route.
+- **Preset IDs outside the documented set have been observed.** Values like
+  `0` and `9` show up when the user has tuned via the web interface but not
+  saved to a USER slot. Treat any value outside `160..162` / `240` as opaque
+  state.
+- **Non-zero "padding" bytes** appear in GET responses where the K13
+  protocol documents `0x00` (byte 3 of the frame, and the byte before the
+  `0xEE` stop). Our parser ignores these — they are likely Melody
+  firmware-specific and not yet understood.
 
 ## USB backend
 
@@ -62,10 +87,21 @@ from snowsky_melody_peq import MelodyPEQ, Band, FilterType, parse_autoeq
 ```
 
 - `MelodyPEQ()` — context manager, opens/closes the device. **No** `name_filter`
-  parameter; the Melody is found by identity check on connection.
+  parameter; the Melody is found by identity check on connection. Constructor
+  validates `inter_cmd_delay >= 0`.
 - Exceptions: `MelodyPEQError` (base), `NotAMelodyError` (wrong device).
-- Read: `get_band_count() / get_eq_enabled() / get_preset() / get_preamp() / get_band(i) / get_all_bands() / get_preset_name(i)`.
-- Write: `set_eq_enabled(bool) / set_user_slot(1..3) / set_preset(id) / set_preamp(db) / set_band(...) / set_bands([...]) / save_to_user(slot=1..3) / reset_eq()`.
+- Read API — **every scalar getter returns `T | None`, where `None` means the
+  device did not respond.** Do not treat `None` as a default value.
+  - `get_band_count() -> int | None`
+  - `get_eq_enabled() -> bool | None` (always `None` on Melody — see quirks)
+  - `get_preset() -> int | None`
+  - `get_preamp() -> float | None`
+  - `get_band(i) -> Band | None`
+  - `get_preset_name(i) -> str | None`
+  - `get_all_bands() -> list[Band]` (empty list when count is unreadable)
+- Write API: `set_eq_enabled(bool) / set_user_slot(1..3) / set_preset(id) / set_preamp(db) / set_band(...) / set_bands([...]) / save_to_user(slot=1..3) / reset_eq()`.
+- `Band` validates ranges in `__post_init__` (freq 20..20000, gain ±24 dB,
+  Q 0.01..100). Construction will raise `ValueError` on out-of-range values.
 - `parse_autoeq(path_or_text)` → `(preamp_db, [Band, ...])`.
 
 CLI: `melody-peq dump | apply FILE [--slot 1..3] | toggle on|off | reset`.
@@ -95,8 +131,17 @@ If it raises `MelodyPEQError: Failed to open Melody HID device`, check:
 ### "Can it do X?" where X is non-EQ
 
 Refer to the "What this project does NOT do" section. If the user needs SPDIF
-toggle or other settings, point them to the Android FiiO Control app — those
-features are intentionally out of scope.
+toggle or other settings, point them to the **Android FiiO Control app** —
+those features are intentionally out of scope.
+
+Important: the `fiiocontrol.fiio.com` web interface does **not** expose SPDIF
+toggle for the Melody; that control is Android-only as of 2026-05. Do not
+suggest the web UI as a workaround for non-EQ settings.
+
+The Melody's USB HID command code for SPDIF/coaxial toggle is **not publicly
+documented**. SmookeyDev controls that family of settings over BLE, and
+Melody has no BLE path. Do not encourage probing arbitrary command codes
+to find it.
 
 ### "Can it support my K13 / BTR17 / other FiiO device?"
 
@@ -112,6 +157,11 @@ No. This project is Melody-only by design. The protocol is documented in
 - Hot-replugging during a write.
 - Re-introducing `pyusb` as the USB backend — the project deliberately uses
   `hidapi` to avoid driver replacement on Windows.
+- Treating `None` from a getter as a default value (e.g. `False` for
+  `get_eq_enabled()`). It explicitly means "no response from device" and
+  must surface that way to users.
+- Changing getters back to returning silent defaults on missing response —
+  that re-introduces the bug where `melody-peq dump` lied about EQ state.
 
 ## When in doubt
 
