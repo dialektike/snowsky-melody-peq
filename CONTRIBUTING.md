@@ -19,7 +19,7 @@ If you need any of the above, fork freely under MIT.
 ## Development setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/snowsky-melody-peq
+git clone https://github.com/dialektike/snowsky-melody-peq
 cd snowsky-melody-peq
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"

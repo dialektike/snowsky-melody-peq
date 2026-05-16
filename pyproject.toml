@@ -39,10 +39,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage      = "https://github.com/YOUR_USERNAME/snowsky-melody-peq"
-Repository    = "https://github.com/YOUR_USERNAME/snowsky-melody-peq"
-Issues        = "https://github.com/YOUR_USERNAME/snowsky-melody-peq/issues"
-Documentation = "https://github.com/YOUR_USERNAME/snowsky-melody-peq#readme"
+Homepage      = "https://github.com/dialektike/snowsky-melody-peq"
+Repository    = "https://github.com/dialektike/snowsky-melody-peq"
+Issues        = "https://github.com/dialektike/snowsky-melody-peq/issues"
+Documentation = "https://github.com/dialektike/snowsky-melody-peq#readme"
 
 [project.scripts]
 melody-peq = "snowsky_melody_peq.cli:main"

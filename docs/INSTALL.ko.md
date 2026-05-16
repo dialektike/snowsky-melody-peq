@@ -32,7 +32,7 @@ conda activate melody
 cd ~/projects     # 예시
 
 # 클론
-git clone https://github.com/YOUR_USERNAME/snowsky-melody-peq.git
+git clone https://github.com/dialektike/snowsky-melody-peq.git
 cd snowsky-melody-peq
 
 # 편집 가능 모드(-e)로 설치 — hidapi가 함께 자동 설치됨

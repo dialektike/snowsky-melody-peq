@@ -25,7 +25,7 @@ Set the Melody's parametric EQ from a Python script or shell — no Android phon
 > **한국어 설치 안내서**가 필요하시면 [`docs/INSTALL.ko.md`](docs/INSTALL.ko.md)를 참고하세요 (conda 기준).
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/snowsky-melody-peq
+git clone https://github.com/dialektike/snowsky-melody-peq
 cd snowsky-melody-peq
 pip install -e .
 ```
