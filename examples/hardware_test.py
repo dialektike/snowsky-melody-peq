@@ -63,11 +63,35 @@ def _dump(dev: MelodyPEQ) -> None:
         print(f"    {band}")
 
 
+def _probe_preset_names(dev: MelodyPEQ) -> None:
+    """Read get_preset_name(id) for every likely USER-slot ID.
+
+    This nails down where the Melody's USER slots actually live. The
+    K13 R2R protocol uses 160..162, but the FiiO web UI lists 10 named
+    preset tiles (Jazz..FH3) — strongly suggesting Melody numbers them
+    0..9. Whichever IDs return the names you set in the web (e.g.
+    "HIFIMAN", "FT5...", "FH3") are the real USER slots.
+    """
+    candidates = list(range(0, 11)) + [160, 161, 162, 240]
+    for i in candidates:
+        name = dev.get_preset_name(i)
+        print(f"  preset {i:>3}: {name!r}")
+
+
 # ─── tests ──────────────────────────────────────────────────────
 # Each entry: (label, callable taking MelodyPEQ).
 
 TESTS: list[tuple[str, callable]] = [
     ("dump current state (read-only)", _dump),
+    ("probe preset names 0..10 + 160..162 + 240 (map USER slots)",
+        _probe_preset_names),
+
+    ("set_preset(7) — probe likely USER1 ID on Melody",
+        lambda d: d.set_preset(7)),
+    ("set_preset(8) — probe likely USER2 ID on Melody",
+        lambda d: d.set_preset(8)),
+    ("set_preset(9) — probe likely USER3 ID on Melody",
+        lambda d: d.set_preset(9)),
 
     ("set_eq_enabled(False) — expect EQ off on web",
         lambda d: d.set_eq_enabled(False)),
@@ -98,10 +122,8 @@ TESTS: list[tuple[str, callable]] = [
     ("reset_eq() — flatten current slot (WARNING: destructive on active slot)",
         lambda d: d.reset_eq()),
 
-    ("set_preset(0) — probe undocumented preset ID 0",
+    ("set_preset(0) — switch to Jazz factory preset",
         lambda d: d.set_preset(0)),
-    ("set_preset(9) — probe undocumented preset ID 9",
-        lambda d: d.set_preset(9)),
 ]
 
 
