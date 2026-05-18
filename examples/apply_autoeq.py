@@ -32,7 +32,9 @@ def main() -> int:
             bands = bands[:n]
 
         dev.set_user_slot(args.slot)
-        dev.set_eq_enabled(True)
+        # Note: on Melody, set_eq_enabled() is a silent no-op (firmware
+        # ignores CMD.EQ_SWITCH). The intended bypass path is
+        # set_preset(240); see docs/PROTOCOL.md.
         dev.set_preamp(preamp)
         dev.set_bands(bands)
         dev.save_to_user(args.slot)

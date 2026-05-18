@@ -76,7 +76,6 @@ with MelodyPEQ() as dev:
     print(f"Device: {dev.name}, {dev.get_band_count()} bands")
 
     dev.set_user_slot(1)             # USER1로 전환
-    dev.set_eq_enabled(True)
     dev.set_preamp(-3.0)
     dev.set_band(0, freq=80,   gain=+4.0, q=0.71, filter_type=FilterType.LOW_SHELF)
     dev.set_band(1, freq=2500, gain=-3.5, q=1.41, filter_type=FilterType.PEAK)

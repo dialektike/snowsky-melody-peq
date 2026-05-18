@@ -51,7 +51,8 @@ def _cmd_apply(args: argparse.Namespace) -> int:
                   file=sys.stderr)
             bands = bands[:n]
         dev.set_user_slot(args.slot)
-        dev.set_eq_enabled(True)
+        # set_eq_enabled() is a silent no-op on Melody — bypass is
+        # controlled via set_preset(240). See docs/PROTOCOL.md.
         dev.set_preamp(preamp)
         dev.set_bands(bands)
         dev.save_to_user(args.slot)
