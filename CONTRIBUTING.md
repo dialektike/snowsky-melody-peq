@@ -56,7 +56,8 @@ When you open an issue or PR, please include:
 - Output of `melody-peq dump`
 - USB product string (`python -c "import hid; print(hid.enumerate(0x2972,0))"`)
   so we can confirm the identity-check word-boundary regex still matches
-- Contents of `melody-test-log.txt` from your `hardware_test.py` session
+- Screenshots of the FiiO web UI for any test where your unit's
+  behaviour differs from what `docs/HARDWARE_TESTING.md` predicts
 - Confirmation that `apply` followed by `save_to_user` persists after a
   USB power cycle on your unit
 - Any preset-ID mappings or response bytes that differ from what

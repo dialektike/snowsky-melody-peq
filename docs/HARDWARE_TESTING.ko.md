@@ -69,7 +69,6 @@ python examples/hardware_test.py
 
 ```
 SnowSky Melody hardware test helper
-Results will append to /…/melody-test-log.txt
 
 Available tests:
    1. dump current state (read-only)
@@ -85,14 +84,12 @@ Select test:
 
 1. 테스트 번호 입력 후 Enter.
 2. 스크립트가 디바이스를 열어 동작을 실행하고
-   `device closed. Switch to the FiiO web UI and connect.` 메시지 출력.
+   `device closed. Verify in web UI, then press Enter for menu:` 줄에서 멈춥니다.
 3. 브라우저에서 FiiO 웹 UI의 **Connect** 클릭. 표시 상태가 오래된 것 같으면 **Refresh** 클릭. 테스트가 한 동작과 UI에 보이는 상태를 비교.
-4. 터미널로 돌아와 결과 입력:
-   ```
-   result [pass/fail/skip + optional note]:
-   ```
-   예: `pass: HIFIMAN 슬롯이 빨간색으로 활성화됨`. 입력 내용은 타임스탬프와 함께 `melody-test-log.txt`에 추가됩니다.
-5. 다음 테스트 전에 웹 UI에서 **Disconnect** 클릭해서 Python이 다시 디바이스를 잡을 수 있게 합니다.
+4. 웹 UI에서 **Disconnect** 클릭해서 Python이 다시 디바이스를 잡을 수 있게 합니다.
+5. 터미널로 돌아와 Enter를 눌러 메뉴로 복귀, 다음 테스트 선택.
+
+스크립트는 자동으로 진행되지 않습니다 — Enter 프롬프트가 connect/disconnect 댄스를 동기화하는 게이트입니다. 노트가 필요하면 웹 UI 스크린샷을 찍거나 별도 파일에 직접 적으세요.
 
 ## 권장 순서
 
@@ -114,7 +111,7 @@ Select test:
 
 세션이 끝나면:
 
-- **`melody-test-log.txt`** — 자동 기록됨. 이슈/PR 열 때 첨부해 주세요.
+- **웹 UI 스크린샷** — 문서화된 기대와 다른 상태가 있으면 이슈/PR에 첨부.
 - **`docs/PROTOCOL.md` "Melody-specific notes"** — 이미 문서화된 것과 다른 매핑을 발견하면 PR로 추가.
 - **`CHANGELOG.md`** — 본인 기기에서 기존 사실이 재확인되면 "Verified on"에, 새 발견이면 "Known limitations"에 기록.
 

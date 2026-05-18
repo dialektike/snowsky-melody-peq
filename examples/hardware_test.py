@@ -1,9 +1,9 @@
 """Interactive hardware-verification helper for the SnowSky Melody.
 
 Each test action opens the device, performs a single SET (or read),
-closes the device, then prompts you to switch to the FiiO web UI to
-verify the change visually. Results are appended to ``melody-test-log.txt``
-in the current directory.
+closes the device, and then pauses so you can switch to the FiiO web UI
+and visually verify what changed. Press Enter to return to the menu for
+the next test.
 
 Run:
 
@@ -17,38 +17,23 @@ fastest way to ground-truth what each SET actually does on hardware.
 
 from __future__ import annotations
 
-import datetime as _dt
 import sys
-from pathlib import Path
 
 from snowsky_melody_peq import FilterType, MelodyPEQ
-
-LOG_PATH = Path("melody-test-log.txt")
-
 
 # ─── action helpers ─────────────────────────────────────────────
 
 def _run(label: str, body) -> None:
-    """Open the device, run ``body(dev)``, close. Then prompt for verdict."""
+    """Open the device, run ``body(dev)``, close. Then pause for verification."""
     print(f"\n→ {label}")
     try:
         with MelodyPEQ() as dev:
             body(dev)
     except Exception as e:
         print(f"  ! error: {e}")
-        _log(label, f"error: {e}")
+        input("  press Enter to continue: ")
         return
-    print("  device closed. Switch to the FiiO web UI and connect.")
-    verdict = input("  result [pass/fail/skip + optional note]: ").strip()
-    if verdict:
-        _log(label, verdict)
-
-
-def _log(label: str, verdict: str) -> None:
-    ts = _dt.datetime.now().isoformat(timespec="seconds")
-    with LOG_PATH.open("a", encoding="utf-8") as f:
-        f.write(f"{ts}\t{label}\t{verdict}\n")
-    print(f"  logged → {LOG_PATH}")
+    input("  device closed. Verify in web UI, then press Enter for menu: ")
 
 
 def _dump(dev: MelodyPEQ) -> None:
@@ -130,8 +115,7 @@ TESTS: list[tuple[str, callable]] = [
 # ─── menu ───────────────────────────────────────────────────────
 
 def main() -> int:
-    print("SnowSky Melody hardware test helper")
-    print(f"Results will append to {LOG_PATH.resolve()}\n")
+    print("SnowSky Melody hardware test helper\n")
     while True:
         print("Available tests:")
         for i, (label, _) in enumerate(TESTS, 1):

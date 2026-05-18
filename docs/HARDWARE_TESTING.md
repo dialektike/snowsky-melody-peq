@@ -91,7 +91,6 @@ You see a menu like:
 
 ```
 SnowSky Melody hardware test helper
-Results will append to /…/melody-test-log.txt
 
 Available tests:
    1. dump current state (read-only)
@@ -106,19 +105,18 @@ Select test:
 For each test:
 
 1. Type the test number, press Enter.
-2. The script opens the device, runs the action, and prints
-   `device closed. Switch to the FiiO web UI and connect.`
+2. The script opens the device, runs the action, and pauses on the line
+   `device closed. Verify in web UI, then press Enter for menu:`.
 3. In the browser, click **Connect** in the FiiO web UI. Click **Refresh**
    if the displayed state looks stale. Compare what the UI shows against
    what the test claims to have done.
-4. Back in the terminal, type your verdict at the prompt:
-   ```
-   result [pass/fail/skip + optional note]:
-   ```
-   Example: `pass: HIFIMAN slot is highlighted in red`. Anything you type
-   is appended to `melody-test-log.txt` with a timestamp.
-5. Before running the next test, click **Disconnect** in the web UI so
-   Python can grab the device again.
+4. Click **Disconnect** in the web UI so Python can grab the device again.
+5. Back in the terminal, press Enter to return to the menu and pick the
+   next test.
+
+The script never auto-advances — the Enter prompt is the gate that keeps
+the connect/disconnect dance synchronised. If you need to record notes,
+take a screenshot of the web UI or keep your own scratch file.
 
 ## Recommended order
 
@@ -164,8 +162,8 @@ tests are read-only; later tests are destructive.
 
 After a session:
 
-- **`melody-test-log.txt`** — auto-populated, attach this to any issue
-  or PR you open.
+- **Web UI screenshots** of any state that differs from the documented
+  expectation — attach to your issue/PR.
 - **`docs/PROTOCOL.md` "Melody-specific notes"** — file a PR adding any
   newly-observed mapping that differs from what is already documented.
 - **`CHANGELOG.md`** — under "Verified on" if your unit confirms the
