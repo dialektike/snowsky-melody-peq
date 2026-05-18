@@ -18,9 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `parse_autoeq()` for ingesting AutoEQ `ParametricEQ.txt` files.
 - `melody-peq` CLI with `dump`, `apply`, `toggle`, `reset` subcommands.
 - Linux udev rule for non-root device access via `/dev/hidraw*`.
-- Unit tests (43 total) covering protocol packet building, AutoEQ parsing,
-  Band/encoder validation, identity check, and getter behaviour on
-  unresponsive commands. No hardware required.
+- Unit tests (45 total) covering protocol packet building, AutoEQ parsing,
+  Band/encoder validation, identity check, getter behaviour on
+  unresponsive commands, and the dual-scheme USER-slot name lookup.
+  No hardware required.
 - Protocol documentation in `docs/PROTOCOL.md`, including Melody-specific
   hardware-observed quirks.
 - Korean installation guide in `docs/INSTALL.ko.md` (conda-based).

@@ -113,6 +113,7 @@ melody-peq toggle on
 |---|---|
 | `get_band_count() / get_eq_enabled() / get_preset() / get_preamp()` | 상태 읽기 — `T \| None` 반환 (`None` = 기기 무응답) |
 | `get_band(i) / get_all_bands()` | PEQ 밴드 읽기 |
+| `get_preset_name(i) / get_user_slot_name(1..3)` | 프리셋/슬롯에 저장된 이름 읽기 |
 | `set_eq_enabled(on) / set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | 상태 설정 |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | PEQ 쓰기 |
 | `save_to_user(slot) / reset_eq()` | 영구 저장(슬롯 1-3) 또는 초기화 |
@@ -130,6 +131,8 @@ Melody는 USER 슬롯 1–3을 제공합니다. **활성화 ID는 `7..9`입니�
 - Melody는 **`EQ_SWITCH` (CMD `0x1A`)에 응답하지 않습니다.** 그래서 Melody에서는 `get_eq_enabled()`가 `None`을 반환합니다. 의도된 bypass 경로는 `set_preset(240)`입니다. 전체 특성 목록은 `docs/PROTOCOL.md`를 보세요.
 - Melody는 **10개 PEQ 밴드**를 가집니다.
 - 프리셋 ID는 이중 체계를 사용합니다: 활성화는 순차 `0..9` + `240`, 슬롯 이름 저장소는 레거시 `160..162` 주소에 있습니다.
+- `get_preset()`은 "현재 활성 슬롯" 쿼리가 아니라 **"Personal / Modified" 인디케이터**입니다 — 웹 UI에서 타일을 클릭한 직후에만 정확한 ID 반환, 그 외 프로그래밍 방식 `set_preset()`/`set_band()` 호출 후에는 `0` 반환. 밴드 자체(`get_all_bands()`)는 항상 정확합니다. 활성 슬롯은 애플리케이션이 직접 추적하세요.
+- `save_to_user(slot=1..3)`은 USB 전원 분리 후에도 유지됩니다 (EEPROM 영구 저장 end-to-end 검증 완료).
 
 ## 동작 원리
 

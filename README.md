@@ -112,6 +112,7 @@ See [`examples/`](examples/) for more.
 |---|---|
 | `get_band_count() / get_eq_enabled() / get_preset() / get_preamp()` | Read state — returns `T \| None` (`None` = no device response) |
 | `get_band(i) / get_all_bands()` | Read PEQ bands |
+| `get_preset_name(i) / get_user_slot_name(1..3)` | Read preset/slot stored name |
 | `set_eq_enabled(on) / set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | Set state |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | Write PEQ |
 | `save_to_user(slot) / reset_eq()` | Persist (slots 1-3) or clear |
@@ -133,6 +134,14 @@ The Melody exposes USER slots 1–3. **Activation IDs are `7..9`** (not the `160
 - The Melody reports **10 PEQ bands**.
 - Preset IDs use a dual scheme: activation is sequential `0..9` + `240`,
   but stored slot names live at the legacy `160..162` addresses.
+- `get_preset()` is a "Personal / Modified" indicator rather than a
+  "currently selected slot" query — it returns the tile ID only when the
+  web UI just clicked it, and returns `0` after any programmatic
+  `set_preset()` / `set_band()` call. The bands themselves
+  (`get_all_bands()`) are always accurate. Track the active slot in your
+  application state.
+- `save_to_user(slot=1..3)` persists across USB power cycles
+  (end-to-end EEPROM verification).
 
 ## How it works
 
