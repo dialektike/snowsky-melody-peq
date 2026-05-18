@@ -159,11 +159,23 @@ them as invalid activation IDs and falls back to bypass.
 persisting anything. The library's `save_to_user(slot=1..3)` translates
 the slot number to `7..9` internally.
 
-`CMD.EQ_PRESET` **GET** on Melody is unreliable as a "which preset is
-active" query — it has been observed to return `0` even immediately after
-a successful `set_preset(7)` and after a power-cycle that re-loads USER1
-contents into the live EQ. Do not rely on it to know which slot is
-active; track that state in your application instead.
+`CMD.EQ_PRESET` **GET** on Melody is not a "currently selected slot"
+query — its return value depends on *how* the active state was reached
+(hardware-verified):
+
+| How the state was reached | `get_preset()` returns |
+|---|---|
+| User clicked a factory preset tile in the web UI (e.g. Jazz, Pop) | the tile's ID (verified `0` for Jazz, `1` for Pop) |
+| User adjusted any band in the web UI (Personal/modified state) | `0` |
+| Library called `set_preset(N)` (any N), no further modification | `0` — even though the slot's bands are correctly loaded into live EQ |
+| Library called `save_to_user(slot)` after a `set_band` | `0`, including after a USB power cycle that reloads the slot |
+
+The reading is best understood as a "Personal / Modified" indicator that
+the web UI uses to drive its tile highlighting: it shows the tile ID only
+while the live EQ exactly matches a known preset, and reverts to `0` the
+moment the state is touched programmatically or modified. Library callers
+should treat `get_preset()` as informational and track the active slot in
+their own application state.
 
 #### Name-lookup IDs — for `CMD.PRESET_NAME` (0x30) GET
 

@@ -85,8 +85,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the raw slot number (`1..3`). The raw-slot form was observed to be
   silently dropped on Melody (device went to bypass without writing).
   End-to-end EEPROM persistence verified after this fix.
-- `get_preset()` (CMD.EQ_PRESET GET) is unreliable on Melody: returns
-  `0` even directly after a successful USER-slot activation and after a
-  power cycle that re-loads USER1 bands. The slot is genuinely active
-  (band content matches USER1) but the GET does not reflect it.
-  Treat the value as informational only.
+- `get_preset()` (CMD.EQ_PRESET GET) is not a "current slot" query on
+  Melody — it returns the tile ID only when the user clicked that tile
+  in the web UI (verified `0` for Jazz, `1` for Pop), and returns `0`
+  ("Personal / Modified" indicator) when the live EQ has been touched
+  in any other way, including any `set_preset(N)` call from this
+  library and any `set_band` modification. The bands are still
+  correctly loaded in all cases — only the indicator differs.
+  See `docs/PROTOCOL.md` for the full per-scenario table.
