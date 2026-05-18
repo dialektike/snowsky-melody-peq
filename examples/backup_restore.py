@@ -18,8 +18,7 @@ def backup(path: str) -> None:
         state = {
             "device":  dev.name,
             "preamp":  dev.get_preamp(),
-            "preset":  dev.get_preset(),
-            "enabled": dev.get_eq_enabled(),
+            "preset":  dev.get_preset(),   # informational; not restored
             "bands": [
                 {
                     "index": b.index,
@@ -40,7 +39,6 @@ def restore(path: str) -> None:
     with open(path) as f:
         state = json.load(f)
     with MelodyPEQ() as dev:
-        dev.set_eq_enabled(bool(state.get("enabled", True)))
         dev.set_preamp(state.get("preamp", 0.0))
         dev.set_bands([
             Band(
@@ -53,6 +51,8 @@ def restore(path: str) -> None:
             for b in state["bands"]
         ])
     print(f"Restored {len(state['bands'])} bands from {path}")
+    print("Note: this writes to the live EQ only. To persist, also call "
+          "save_to_user(slot) on the currently active USER slot.")
 
 
 def main() -> int:
