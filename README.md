@@ -4,7 +4,7 @@ USB HID parametric-EQ control for the **FiiO SnowSky Melody**, in Python.
 
 > **한국어 README**: [`README.ko.md`](README.ko.md)
 
-> **Disclaimer.** This is an unofficial, community-maintained project. It is not affiliated with, endorsed by, or sponsored by Guangzhou FiiO Electronics Technology Co., Ltd. "FiiO" and "SnowSky" are trademarks of their respective owner and are used here only to indicate device compatibility.
+> **Disclaimer.** This is an unofficial, personal project. It is not affiliated with, endorsed by, or sponsored by Guangzhou FiiO Electronics Technology Co., Ltd. "FiiO" and "SnowSky" are trademarks of their respective owner and are used here only to indicate device compatibility.
 
 Set the Melody's parametric EQ from a Python script or shell — no Android phone, no browser. The library refuses to touch any USB device other than the SnowSky Melody, so it's safe to run blindly with other DACs attached.
 

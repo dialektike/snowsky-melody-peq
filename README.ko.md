@@ -4,7 +4,7 @@
 
 > **English README**: [`README.md`](README.md)
 
-> **고지.** 본 프로젝트는 비공식 커뮤니티 프로젝트입니다. Guangzhou FiiO Electronics Technology Co., Ltd.와 어떠한 제휴, 보증, 후원 관계도 없습니다. "FiiO"와 "SnowSky"는 해당 권리자의 상표이며, 여기서는 기기 호환성 표시 목적으로만 사용합니다.
+> **고지.** 본 프로젝트는 비공식 개인 프로젝트입니다. Guangzhou FiiO Electronics Technology Co., Ltd.와 어떠한 제휴, 보증, 후원 관계도 없습니다. "FiiO"와 "SnowSky"는 해당 권리자의 상표이며, 여기서는 기기 호환성 표시 목적으로만 사용합니다.
 
 안드로이드 폰이나 브라우저 없이 Python 스크립트나 셸에서 Melody의 PEQ를 설정할 수 있습니다. 라이브러리는 SnowSky Melody 외의 USB 기기는 절대 건드리지 않으므로 다른 DAC을 함께 연결한 상태에서도 안전하게 실행 가능합니다.
 
