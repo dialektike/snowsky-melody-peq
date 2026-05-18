@@ -223,7 +223,7 @@ which python                # 환경 경로가 출력돼야 함
 ```bash
 melody-peq dump                              # 현재 EQ 상태 출력
 melody-peq apply profile.txt --slot 1        # AutoEQ 파일 적용 후 USER1에 저장
-melody-peq toggle on                         # EQ 켜기
-melody-peq toggle off                        # EQ 끄기
+melody-peq preset 7                          # USER1로 전환 (8=USER2, 9=USER3)
+melody-peq preset 240                        # EQ bypass (Melody의 "Close EQ")
 melody-peq reset                             # 현재 슬롯 초기화
 ```

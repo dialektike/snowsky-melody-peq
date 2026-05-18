@@ -14,7 +14,7 @@
 - 글로벌 프리앰프 조정.
 - USER 프리셋 슬롯(USER1..USER3) 전환과 EQ 영구 저장.
 - [AutoEq](https://github.com/jaakkopasanen/AutoEq) 커뮤니티 튜닝 프로파일 가져오기.
-- CLI: `melody-peq dump | apply | toggle | reset`.
+- CLI: `melody-peq dump | apply | preset | reset`.
 
 ## 할 수 없는 일
 
@@ -101,7 +101,8 @@ with MelodyPEQ() as dev:
 ```bash
 melody-peq dump
 melody-peq apply HE-X4_ParametricEQ.txt --slot 1
-melody-peq toggle on
+melody-peq preset 7              # USER1로 전환
+melody-peq preset 240             # EQ bypass
 ```
 
 더 많은 예제는 [`examples/`](examples/)를 참고하세요.

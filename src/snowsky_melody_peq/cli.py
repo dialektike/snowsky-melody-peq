@@ -5,7 +5,8 @@ Examples
 
   melody-peq dump
   melody-peq apply HE-X4_ParametricEQ.txt --slot 1
-  melody-peq toggle on
+  melody-peq preset 7         # switch to USER1
+  melody-peq preset 240       # bypass EQ (Melody's "Close EQ")
   melody-peq reset
 """
 
@@ -60,10 +61,18 @@ def _cmd_apply(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_toggle(args: argparse.Namespace) -> int:
+_VALID_PRESET_IDS = (*range(0, 10), 240)
+
+
+def _cmd_preset(args: argparse.Namespace) -> int:
+    if args.id not in _VALID_PRESET_IDS:
+        raise ValueError(
+            f"preset id must be in 0..9 or 240, got {args.id}. "
+            f"USER slots are 7/8/9, factory presets are 0..6, bypass is 240."
+        )
     with MelodyPEQ() as dev:
-        dev.set_eq_enabled(args.state == "on")
-        print(f"EQ {args.state}")
+        dev.set_preset(args.id)
+        print(f"Active preset set to {args.id}")
     return 0
 
 
@@ -92,9 +101,16 @@ def build_parser() -> argparse.ArgumentParser:
                           help="USER slot 1-3 to persist into (default 1)")
     sp_apply.set_defaults(func=_cmd_apply)
 
-    sp_tog = sub.add_parser("toggle", help="Turn EQ on or off")
-    sp_tog.add_argument("state", choices=["on", "off"])
-    sp_tog.set_defaults(func=_cmd_toggle)
+    sp_preset = sub.add_parser(
+        "preset",
+        help="Switch active preset by ID (0..9 = factory/USER, 240 = bypass)",
+    )
+    sp_preset.add_argument(
+        "id", type=int,
+        help="Preset ID: 0=Jazz 1=Pop 2=Rock 3=Dance 4=R&B 5=Classic "
+             "6=Hip-Pop 7=USER1 8=USER2 9=USER3 240=bypass",
+    )
+    sp_preset.set_defaults(func=_cmd_preset)
 
     sp_rst = sub.add_parser("reset", help="Clear EQ on the currently selected slot")
     sp_rst.set_defaults(func=_cmd_reset)

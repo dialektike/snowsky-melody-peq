@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   word-boundary regex on the HID product string. Raises `NotAMelodyError`
   for any other FiiO device.
 - `parse_autoeq()` for ingesting AutoEQ `ParametricEQ.txt` files.
-- `melody-peq` CLI with `dump`, `apply`, `toggle`, `reset` subcommands.
+- `melody-peq` CLI with `dump`, `apply`, `preset`, `reset` subcommands.
+  (`preset ID` accepts factory/USER activation IDs `0..9` and `240` for
+  bypass — replaces an earlier `toggle on|off` form that did not work on
+  Melody because the firmware ignores `EQ_SWITCH`.)
 - Linux udev rule for non-root device access via `/dev/hidraw*`.
 - Unit tests (45 total) covering protocol packet building, AutoEQ parsing,
   Band/encoder validation, identity check, getter behaviour on

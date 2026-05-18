@@ -124,7 +124,10 @@ from snowsky_melody_peq import MelodyPEQ, Band, FilterType, parse_autoeq
   Q 0.01..100). Construction will raise `ValueError` on out-of-range values.
 - `parse_autoeq(path_or_text)` → `(preamp_db, [Band, ...])`.
 
-CLI: `melody-peq dump | apply FILE [--slot 1..3] | toggle on|off | reset`.
+CLI: `melody-peq dump | apply FILE [--slot 1..3] | preset ID | reset`.
+Valid preset IDs are 0..9 (factory/USER) and 240 (bypass). The older
+`toggle on|off` subcommand was removed because Melody silently ignores
+`EQ_SWITCH`; use `preset 240` for bypass.
 
 ## Common assistant tasks
 

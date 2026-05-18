@@ -14,7 +14,7 @@ Set the Melody's parametric EQ from a Python script or shell — no Android phon
 - Adjust the global pre-amp.
 - Switch USER preset slots (USER1..USER3) and persist EQ to them.
 - Import community-tuned PEQ profiles from [AutoEq](https://github.com/jaakkopasanen/AutoEq).
-- CLI: `melody-peq dump | apply | toggle | reset`.
+- CLI: `melody-peq dump | apply | preset | reset`.
 
 ## What it does NOT do
 
@@ -100,7 +100,8 @@ From the shell:
 ```bash
 melody-peq dump
 melody-peq apply HE-X4_ParametricEQ.txt --slot 1
-melody-peq toggle on
+melody-peq preset 7              # switch to USER1
+melody-peq preset 240             # bypass EQ
 ```
 
 See [`examples/`](examples/) for more.
