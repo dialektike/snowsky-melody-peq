@@ -154,6 +154,17 @@ Sending `EQ_PRESET` with IDs in the `160..162` range — i.e. the K13 R2R USER
 slot IDs — **does not switch USER slots on Melody**. The device interprets
 them as invalid activation IDs and falls back to bypass.
 
+`CMD.EQ_SAVE` (`0x19`) also expects an activation ID — sending the raw
+1/2/3 slot number results in the device dropping to bypass without
+persisting anything. The library's `save_to_user(slot=1..3)` translates
+the slot number to `7..9` internally.
+
+`CMD.EQ_PRESET` **GET** on Melody is unreliable as a "which preset is
+active" query — it has been observed to return `0` even immediately after
+a successful `set_preset(7)` and after a power-cycle that re-loads USER1
+contents into the live EQ. Do not rely on it to know which slot is
+active; track that state in your application instead.
+
 #### Name-lookup IDs — for `CMD.PRESET_NAME` (0x30) GET
 
 | ID | Meaning |

@@ -58,7 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Melody. Read side: `melody-peq dump` returns a coherent read of all 10
   bands, pre-amp, and preset. Write side: `set_preset(0..9)` and
   `set_preset(240)` all behave as expected when cross-checked against the
-  FiiO web UI (see `docs/HARDWARE_TESTING.md`).
+  FiiO web UI (see `docs/HARDWARE_TESTING.md`). `save_to_user(1)` was
+  verified end-to-end: `set_band` modification → `save_to_user(1)` →
+  switch USER slot away and back → USB unplug/replug → modification
+  survives.
 
 ### Known limitations / hardware findings
 - The Melody **does not respond to `CMD.EQ_SWITCH` (0x1A)** — GET nor SET.
@@ -78,5 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `MELODY_PRESET_USER1` constant updated from `160` to `7` accordingly.
   - New helper `MelodyPEQ.get_user_slot_name(slot)` hides the scheme
     duality from callers.
-- Persisting bands via `save_to_user()` has not yet been hardware-verified
-  end-to-end (write + reboot survival check).
+- `save_to_user(slot)` now sends the activation ID (`7..9`) instead of
+  the raw slot number (`1..3`). The raw-slot form was observed to be
+  silently dropped on Melody (device went to bypass without writing).
+  End-to-end EEPROM persistence verified after this fix.
+- `get_preset()` (CMD.EQ_PRESET GET) is unreliable on Melody: returns
+  `0` even directly after a successful USER-slot activation and after a
+  power cycle that re-loads USER1 bands. The slot is genuinely active
+  (band content matches USER1) but the GET does not reflect it.
+  Treat the value as informational only.

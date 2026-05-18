@@ -365,12 +365,17 @@ class MelodyPEQ:
             time.sleep(self.inter_cmd_delay)
 
     def save_to_user(self, slot: int) -> None:
-        """Persist current EQ to USER slot 1, 2, or 3 so it survives reboot."""
+        """Persist current EQ to USER slot 1, 2, or 3 so it survives reboot.
+
+        On Melody this sends the activation ID (7/8/9), matching the
+        EQ_PRESET scheme — sending the raw 1/2/3 slot number was observed
+        to be ignored (the device drops to bypass instead of saving).
+        """
         if slot not in MELODY_USER_SLOTS:
             raise ValueError(
                 f"Melody only has USER slots {MELODY_USER_SLOTS}, got {slot}."
             )
-        self._set(CMD.EQ_SAVE, bytes([slot]))
+        self._set(CMD.EQ_SAVE, bytes([MELODY_PRESET_USER1 + slot - 1]))
 
     def reset_eq(self) -> None:
         """Clear EQ on the currently selected slot."""
