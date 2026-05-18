@@ -54,8 +54,28 @@ def _is_melody_product_string(s: str | None) -> bool:
     return _MELODY_PRODUCT_RE.search(s) is not None
 
 # Known Melody capabilities.
-MELODY_USER_SLOTS = (1, 2, 3)         # USER1..USER3 → preset IDs 160..162
-MELODY_PRESET_USER1 = 160
+#
+# The Melody firmware uses TWO parallel preset-ID schemes that we have
+# to honour separately (verified on hardware):
+#
+#   • Activation (CMD.EQ_PRESET SET) uses a sequential 0..9 + 240 scheme:
+#       0..6   = factory presets (Jazz, Pop, Rock, Dance, R&B, Classic,
+#                Hip-Pop)
+#       7..9   = USER1, USER2, USER3
+#       240    = explicit bypass (web UI's "Close EQ")
+#     Sending 160..162 to EQ_PRESET does NOT switch USER slots — the
+#     device falls back to bypass.
+#
+#   • Name lookup (CMD.PRESET_NAME GET) uses the legacy K13 R2R scheme:
+#       160..162 = USER1, USER2, USER3 names ("HIFIMAN", "FT5", "FH3", …)
+#     Asking for names of 0..10 returns a firmware placeholder, not a
+#     readable string.
+#
+# get_user_slot_name() below hides this duality so that callers only
+# ever think in terms of slot 1/2/3.
+MELODY_USER_SLOTS = (1, 2, 3)
+MELODY_PRESET_USER1 = 7               # activation ID for USER1
+MELODY_PRESET_NAME_USER1 = 160        # name-lookup ID for USER1
 MELODY_PRESET_BYPASS = 240
 
 
@@ -223,7 +243,9 @@ class MelodyPEQ:
     def get_preset(self) -> int | None:
         """Current preset ID, or None if not answered.
 
-        Known values: 160-162 = USER1..USER3, 240 = bypass.
+        Known activation IDs on Melody: 0..6 = factory presets,
+        7..9 = USER1..USER3, 240 = bypass. See module docstring for the
+        full dual-scheme story.
         """
         resp = self._get(CMD.EQ_PRESET)
         p = parse_response(resp) if resp else None
@@ -263,12 +285,32 @@ class MelodyPEQ:
         return bands
 
     def get_preset_name(self, index: int) -> str | None:
-        """Preset display name, or None if the device did not respond."""
+        """Preset display name, or None if the device did not respond.
+
+        Melody quirk: only the name-lookup IDs ``160..162`` (USER1..USER3)
+        return a readable user-set name. Asking for factory preset IDs
+        ``0..10`` returns a firmware placeholder of garbage bytes. Use
+        :meth:`get_user_slot_name` if you just want a USER slot name by
+        its 1/2/3 slot number.
+        """
         resp = self._get(CMD.PRESET_NAME, bytes([index]))
         p = parse_response(resp) if resp else None
         if not p or len(p[1]) < 2:
             return None
         return bytes(p[1][1:]).decode("utf-8", errors="replace").rstrip("\x00")
+
+    def get_user_slot_name(self, slot: int) -> str | None:
+        """Name of USER slot 1/2/3, or None if the device did not respond.
+
+        Wraps :meth:`get_preset_name` with the K13-style name-lookup ID
+        scheme that Melody uses for stored slot names (160..162). The
+        SET scheme (7..9) cannot be used to retrieve a name.
+        """
+        if slot not in MELODY_USER_SLOTS:
+            raise ValueError(
+                f"Melody only has USER slots {MELODY_USER_SLOTS}, got {slot}."
+            )
+        return self.get_preset_name(MELODY_PRESET_NAME_USER1 + slot - 1)
 
     # ─────────────────────────── SET API ───────────────────────────
 
@@ -288,7 +330,12 @@ class MelodyPEQ:
         self._set(CMD.EQ_PRESET, bytes([MELODY_PRESET_USER1 + slot - 1]))
 
     def set_preset(self, preset_id: int) -> None:
-        """Switch preset by raw ID. USER1..USER3 = 160..162. Bypass = 240."""
+        """Switch preset by raw activation ID.
+
+        On Melody (verified): ``0..6`` = factory presets, ``7..9`` =
+        USER1..USER3, ``240`` = bypass. Sending the legacy ``160..162``
+        IDs causes the device to fall back to bypass.
+        """
         self._set(CMD.EQ_PRESET, bytes([preset_id & 0xFF]))
 
     def set_preamp(self, db: float) -> None:

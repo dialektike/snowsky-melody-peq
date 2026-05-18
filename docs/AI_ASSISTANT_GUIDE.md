@@ -46,7 +46,13 @@ do not add multi-device support to this codebase.
   Note: SmookeyDev controls SPDIF/input source over **BLE**, not USB HID;
   USB HID in that project is EQ-only. Melody is USB-only, so the SmookeyDev
   BLE codes are not directly portable.
-- Melody USER slots: 1, 2, 3 (preset IDs 160, 161, 162).
+- Melody USER slots: **slot numbers 1/2/3 in this library**.
+  - **Activation IDs** (CMD.EQ_PRESET): `7`, `8`, `9` — verified on hardware.
+  - **Name-lookup IDs** (CMD.PRESET_NAME): `160`, `161`, `162` — verified.
+  - Sending K13's `160..162` to EQ_PRESET on Melody causes bypass, NOT
+    USER-slot activation. The library handles this internally.
+- Melody factory preset IDs: `0` Jazz, `1` Pop, `2` Rock, `3` Dance, `4` R&B,
+  `5` Classic, `6` Hip-Pop. Read-only.
 - Melody is USB-only — no BLE control path.
 
 ## Hardware-verified Melody quirks
@@ -62,10 +68,12 @@ These are observed behaviours on real Melody hardware, not assumptions:
     library cannot verify the change took effect.
   - The mechanism Melody actually uses for EQ bypass is undocumented;
     `set_preset(240)` (bypass) may be the intended route.
-- **Preset IDs outside the documented set have been observed.** Values like
-  `0` and `9` show up when the user has tuned via the web interface but not
-  saved to a USER slot. Treat any value outside `160..162` / `240` as opaque
-  state.
+- **The documented preset ID set is wrong for Melody.** The K13 R2R doc says
+  USER slots live at `160..162`; on Melody they live at activation IDs
+  `7..9`, and `160..162` are the (separate) name-storage addresses. Earlier
+  observations of "preset 0" and "preset 9" simply meant the active preset
+  was a factory preset or a USER slot — not a mystery. See the Verified
+  facts section above for the full mapping.
 - **Non-zero "padding" bytes** appear in GET responses where the K13
   protocol documents `0x00` (byte 3 of the frame, and the byte before the
   `0xEE` stop). Our parser ignores these — they are likely Melody
@@ -97,7 +105,10 @@ from snowsky_melody_peq import MelodyPEQ, Band, FilterType, parse_autoeq
   - `get_preset() -> int | None`
   - `get_preamp() -> float | None`
   - `get_band(i) -> Band | None`
-  - `get_preset_name(i) -> str | None`
+  - `get_preset_name(i) -> str | None` (raw — Melody only returns names
+    for `i in {160, 161, 162}`)
+  - `get_user_slot_name(slot) -> str | None` (slot 1/2/3; wraps the
+    raw call with the right ID mapping)
   - `get_all_bands() -> list[Band]` (empty list when count is unreadable)
 - Write API: `set_eq_enabled(bool) / set_user_slot(1..3) / set_preset(id) / set_preamp(db) / set_band(...) / set_bands([...]) / save_to_user(slot=1..3) / reset_eq()`.
 - `Band` validates ranges in `__post_init__` (freq 20..20000, gain ±24 dB,

@@ -96,16 +96,21 @@ Example: `Q = 0.71` → `0x00 0x47`. `Q = 1.41` → `0x00 0x8D`.
 | `6` | All Pass |
 
 ### Preset ID (`u8`)
+
+The K13 R2R uses a single preset-ID namespace:
+
 | Range | Meaning |
 |-------|---------|
 | `0..10` | Factory presets (read-only) |
 | `160..169` | USER1..USER10 (writable) |
 | `240` | Bypass |
 
-The Melody is documented to expose USER1..USER3 (`160..162`); other slots in
-this range are reserved for devices with more user storage.
+**The Melody does not.** It uses two parallel ID schemes, depending on
+which command you send — see the "Melody-specific notes" section below.
 
 ## Melody-specific notes
+
+### USB / general
 
 - The Melody is USB-only — there is no BLE control path, so settings that on
   the K13 R2R live on BLE (SPDIF toggle, input source, etc.) are not part of
@@ -114,21 +119,58 @@ this range are reserved for devices with more user storage.
   some older documentation suggests. `MelodyPEQ` queries `EQ_COUNT` at runtime
   so this is handled transparently.
 - The Melody **does not respond to `EQ_SWITCH` (0x1A)** — neither GET nor SET
-  produces a response. Verified on hardware. The mechanism it uses for EQ
-  bypass is undocumented; `Preset = 240` (bypass) may be the intended path.
-  As a result, `get_eq_enabled()` returns `None` on Melody, and `set_eq_enabled()`
-  cannot be relied upon.
+  produces a response. Verified on hardware. The correct way to bypass EQ on
+  Melody is `EQ_PRESET = 240` (see preset table below). `get_eq_enabled()`
+  returns `None` on Melody; `set_eq_enabled()` cannot be relied upon.
 - The Melody's GET responses contain non-zero bytes in positions that the K13
   protocol documents as `0x00` padding (e.g. byte 3 of the response, and the
   byte before the `0xEE` stop sentinel). The library's response parser only
   reads the `CMD` and `LEN` fields, so these bytes do not affect decoding,
   but they hint that the Melody firmware uses those bytes for an as-yet
   undocumented purpose.
-- The Melody exposes preset IDs outside the documented `160..162` / `240`
-  range. Values like `0` and `9` have been observed in the wild for an
-  unsaved live/custom state and possibly a "last touched band index" echo.
-  These are not yet understood; treat any value outside the documented set
-  as opaque.
+
+### Dual preset-ID scheme (verified on hardware)
+
+Melody uses two parallel preset-ID namespaces. **You must use the right one
+for the right command.**
+
+#### Activation IDs — for `CMD.EQ_PRESET` (0x16) SET/GET
+
+| ID | Meaning |
+|---|---|
+| `0` | Factory preset: Jazz |
+| `1` | Factory preset: Pop |
+| `2` | Factory preset: Rock |
+| `3` | Factory preset: Dance |
+| `4` | Factory preset: R&B |
+| `5` | Factory preset: Classic |
+| `6` | Factory preset: Hip-Pop |
+| `7` | USER1 (default name `HIFIMAN` on this maintainer's unit) |
+| `8` | USER2 (default name `FT5`) |
+| `9` | USER3 (default name `FH3`) |
+| `240` | Explicit bypass (web UI's **Close EQ**) |
+
+Sending `EQ_PRESET` with IDs in the `160..162` range — i.e. the K13 R2R USER
+slot IDs — **does not switch USER slots on Melody**. The device interprets
+them as invalid activation IDs and falls back to bypass.
+
+#### Name-lookup IDs — for `CMD.PRESET_NAME` (0x30) GET
+
+| ID | Meaning |
+|---|---|
+| `160` | USER1 stored name |
+| `161` | USER2 stored name |
+| `162` | USER3 stored name |
+| `0..10` | No user-readable name — device returns a fixed placeholder of garbage bytes |
+
+So if you have a USER slot at activation ID `7` and want to read its name,
+you must query `get_preset_name(160)`, not `get_preset_name(7)`. The library
+hides this via `get_user_slot_name(slot)` which takes the 1/2/3 slot number
+and looks up the right ID.
+
+This duality is presumably a firmware compatibility shim — the K13 R2R name
+storage layout is preserved, but activation is renumbered to a sequential
+0–9 + 240 scheme that matches the tile layout in the FiiO web UI.
 
 ## Worked example
 

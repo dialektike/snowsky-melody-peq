@@ -121,15 +121,18 @@ See [`examples/`](examples/) for more.
 `Band` validates its arguments at construction: `freq` 20–20000 Hz, `gain`
 ±24 dB, `Q` 0.01–100. Out-of-range values raise `ValueError`.
 
-The Melody exposes USER slots 1–3 (preset IDs `160..162`). Preset ID `240` is bypass. Factory presets (`0..10`) are read-only. In practice the device also reports IDs like `0` or `9` for an unsaved live tuning — treat anything outside the documented set as opaque.
+The Melody exposes USER slots 1–3. **Activation IDs are `7..9`** (not the `160..162` of the K13 R2R docs — sending those on Melody causes bypass). Preset ID `240` is the explicit bypass. Factory presets occupy IDs `0..6` (Jazz, Pop, Rock, Dance, R&B, Classic, Hip-Pop) and are read-only.
+
+`set_user_slot(1..3)` and `save_to_user(1..3)` use the 1/2/3 slot number; the library translates to the right activation ID internally. `get_user_slot_name(1..3)` looks up the stored name (which the device keeps under a separate legacy ID scheme — see `docs/PROTOCOL.md`).
 
 ### Melody-specific quirks (observed on real hardware)
 
 - The Melody **does not respond to `EQ_SWITCH` (CMD `0x1A`)**, so
-  `get_eq_enabled()` returns `None` on Melody. `set_eq_enabled()` cannot be
-  verified by readback — see `docs/PROTOCOL.md` for the full list of
-  observed quirks.
+  `get_eq_enabled()` returns `None` on Melody. The intended bypass path is
+  `set_preset(240)`. See `docs/PROTOCOL.md` for the full quirk list.
 - The Melody reports **10 PEQ bands**.
+- Preset IDs use a dual scheme: activation is sequential `0..9` + `240`,
+  but stored slot names live at the legacy `160..162` addresses.
 
 ## How it works
 

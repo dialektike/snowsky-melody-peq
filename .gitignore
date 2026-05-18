@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# hardware_test.py session log (per-user, not source)
+melody-test-log.txt

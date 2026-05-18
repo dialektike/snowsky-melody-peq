@@ -55,19 +55,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Verified on
 - macOS (darwin, arm64) with Python 3.12 + hidapi 0.15.0 on a SnowSky
-  Melody. `melody-peq dump` returns a coherent read of all 10 bands,
-  pre-amp, and preset.
+  Melody. Read side: `melody-peq dump` returns a coherent read of all 10
+  bands, pre-amp, and preset. Write side: `set_preset(0..9)` and
+  `set_preset(240)` all behave as expected when cross-checked against the
+  FiiO web UI (see `docs/HARDWARE_TESTING.md`).
 
 ### Known limitations / hardware findings
 - The Melody **does not respond to `CMD.EQ_SWITCH` (0x1A)** — GET nor SET.
   `get_eq_enabled()` therefore returns `None` on Melody, and
-  `set_eq_enabled()` cannot be verified. The Melody's actual EQ bypass
-  mechanism is undocumented; `Preset = 240` is the likely route.
+  `set_eq_enabled()` cannot be verified. Use `set_preset(240)` for EQ
+  bypass instead — verified to highlight "Close EQ" in the web UI.
 - The Melody reports **10 PEQ bands**, not the 5 that some older
   documentation suggested.
-- Preset IDs **outside the documented `160..162` / `240` set** have been
-  observed in practice (`0`, `9`). These appear when the user has tuned
-  via the FiiO web interface without saving to a USER slot. Treat any value
-  outside the documented set as opaque.
+- **Preset IDs follow a dual scheme on Melody** (corrected from the K13
+  R2R single-namespace assumption inherited from upstream docs):
+  - Activation (`CMD.EQ_PRESET`): `0..6` = factory presets,
+    `7..9` = USER1..USER3, `240` = bypass. **`160..162` are NOT valid
+    activation IDs on Melody** — sending them falls back to bypass.
+  - Name lookup (`CMD.PRESET_NAME`): `160..162` return USER slot names
+    (e.g. "HIFIMAN", "FT5", "FH3"); IDs `0..10` return a firmware
+    placeholder of garbage bytes (no stored names for factory presets).
+  - `MELODY_PRESET_USER1` constant updated from `160` to `7` accordingly.
+  - New helper `MelodyPEQ.get_user_slot_name(slot)` hides the scheme
+    duality from callers.
 - Persisting bands via `save_to_user()` has not yet been hardware-verified
   end-to-end (write + reboot survival check).

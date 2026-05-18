@@ -121,12 +121,15 @@ melody-peq toggle on
 
 `Band`는 생성 시점에 인자 범위를 검증합니다: `freq` 20–20000 Hz, `gain` ±24 dB, `Q` 0.01–100. 범위를 벗어나면 `ValueError`를 던집니다.
 
-Melody는 USER 슬롯 1–3 (프리셋 ID `160..162`)을 제공합니다. 프리셋 ID `240`은 bypass, `0..10`은 공장 프리셋(읽기 전용)입니다. 실제로는 USER 슬롯에 저장하지 않은 라이브 튜닝 상태에서 `0`이나 `9` 같은 값도 관찰됩니다 — 문서화된 값 이외는 불투명(opaque)하게 다루세요.
+Melody는 USER 슬롯 1–3을 제공합니다. **활성화 ID는 `7..9`입니다** (K13 R2R 문서의 `160..162`가 아닙니다 — 그 값들을 Melody에 보내면 bypass로 떨어집니다). 프리셋 ID `240`은 명시적 bypass. 공장 프리셋은 `0..6` (Jazz, Pop, Rock, Dance, R&B, Classic, Hip-Pop)이고 읽기 전용입니다.
+
+`set_user_slot(1..3)`과 `save_to_user(1..3)`은 1/2/3 슬롯 번호를 받고, 라이브러리가 내부적으로 올바른 활성화 ID로 변환합니다. `get_user_slot_name(1..3)`은 저장된 슬롯 이름을 조회합니다 (디바이스가 별도의 레거시 ID 체계로 보관 — `docs/PROTOCOL.md` 참고).
 
 ### Melody 고유 특성 (실기 확인)
 
-- Melody는 **`EQ_SWITCH` (CMD `0x1A`)에 응답하지 않습니다.** 그래서 Melody에서는 `get_eq_enabled()`가 `None`을 반환합니다. `set_eq_enabled()`도 readback으로 검증 불가 — 전체 특성 목록은 `docs/PROTOCOL.md`를 보세요.
+- Melody는 **`EQ_SWITCH` (CMD `0x1A`)에 응답하지 않습니다.** 그래서 Melody에서는 `get_eq_enabled()`가 `None`을 반환합니다. 의도된 bypass 경로는 `set_preset(240)`입니다. 전체 특성 목록은 `docs/PROTOCOL.md`를 보세요.
 - Melody는 **10개 PEQ 밴드**를 가집니다.
+- 프리셋 ID는 이중 체계를 사용합니다: 활성화는 순차 `0..9` + `240`, 슬롯 이름 저장소는 레거시 `160..162` 주소에 있습니다.
 
 ## 동작 원리
 

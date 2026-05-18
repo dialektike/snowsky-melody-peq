@@ -53,3 +53,30 @@ def test_get_all_bands_returns_empty_when_count_unknown():
     dev = _dev_with_no_response()
     with patch.object(dev, "_exchange", return_value=None):
         assert dev.get_all_bands() == []
+
+
+def test_get_user_slot_name_maps_to_name_lookup_id():
+    """Slot 1/2/3 must query name-lookup IDs 160/161/162, not 7/8/9."""
+    dev = _dev_with_no_response()
+    seen: list[int] = []
+
+    def fake_get_preset_name(index: int) -> str | None:
+        seen.append(index)
+        return None
+
+    with patch.object(dev, "get_preset_name", side_effect=fake_get_preset_name):
+        dev.get_user_slot_name(1)
+        dev.get_user_slot_name(2)
+        dev.get_user_slot_name(3)
+
+    assert seen == [160, 161, 162]
+
+
+def test_get_user_slot_name_rejects_invalid_slot():
+    import pytest
+
+    dev = _dev_with_no_response()
+    with pytest.raises(ValueError, match="USER slots"):
+        dev.get_user_slot_name(0)
+    with pytest.raises(ValueError, match="USER slots"):
+        dev.get_user_slot_name(4)
