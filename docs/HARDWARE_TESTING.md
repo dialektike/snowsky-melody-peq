@@ -1,33 +1,61 @@
 # Hardware Testing Guide
 
 This guide walks through verifying the library against a real SnowSky
-Melody using `examples/hardware_test.py` and the official FiiO web UI for
-visual ground-truth. It exists because the Melody silently ignores some
-documented commands (`EQ_SWITCH`), so we cannot trust read-back alone —
-the web UI is the source of truth.
+Melody using `examples/hardware_test.py` with the official FiiO web UI
+for visual ground-truth.
 
 > 한국어 버전: [`HARDWARE_TESTING.ko.md`](HARDWARE_TESTING.ko.md)
+
+It exists for two reasons:
+
+- The Melody silently ignores some documented commands (`EQ_SWITCH`), so
+  we cannot trust read-back for everything. The web UI is the source of
+  truth for "did this SET actually do anything?".
+- The library encodes Melody-specific findings (USER slots at activation
+  IDs `7..9`, `save_to_user` activation-ID translation, etc. — see
+  [`PROTOCOL.md`](PROTOCOL.md)) that came from running this exact
+  procedure on one maintainer's unit. A second device may behave
+  differently; this guide is also how you confirm it doesn't.
+
+## What is already known (don't re-derive)
+
+The following has been hardware-verified on macOS with hidapi 0.15.0 on
+one SnowSky Melody. Skim before running tests so you know what to expect:
+
+- 10 PEQ bands. `get_band_count()` confirms.
+- USER slot activation IDs: `7` (USER1), `8` (USER2), `9` (USER3).
+  Sending the legacy K13 `160..162` drops the device to bypass instead.
+- Factory preset IDs: `0` Jazz, `1` Pop, `2` Rock, `3` Dance, `4` R&B,
+  `5` Classic, `6` Hip-Pop.
+- Explicit bypass: `set_preset(240)` → web UI highlights **Close EQ**.
+- `EQ_SWITCH` (0x1A) is silently unsupported on Melody; `get_eq_enabled()`
+  returns `None`, `set_eq_enabled()` cannot be readback-verified.
+- `save_to_user(slot)` is hardware-verified end-to-end (EEPROM persists
+  across USB power cycle) when the library sends the activation ID.
+- `get_preset()` is a "Personal / Modified" indicator: returns the tile
+  ID only when the user clicked it in the web UI; returns `0` after any
+  programmatic `set_preset()`/`set_band()` call. See
+  [`PROTOCOL.md`](PROTOCOL.md) for the per-scenario table.
 
 ## Why visual verification
 
 Some commands on the Melody:
 
 - Have no response from the device (`get_eq_enabled()` returns `None`).
-- Have ambiguous side effects (e.g. `set_preset(160)` might bypass instead
-  of switching to a USER slot).
-- Lack any acknowledgement we can trust.
+- Update internal state without echoing on the wire (e.g. `set_preset()`).
+- Have separate firmware indicators ("active tile" vs "live bands") that
+  read-back queries do not expose.
 
-Visual verification via the FiiO web UI sidesteps all of this. You see
-the device's actual state in your browser.
+Visual verification via the FiiO web UI sidesteps all of this — you see
+the device's actual state in your browser tab.
 
 ## Prerequisites
 
 - A SnowSky Melody connected over USB, working in the web UI.
 - The library installed in a virtual environment (see [`README.md`](../README.md)).
 - A Chromium-family browser (Chrome, Edge, Brave) for WebHID support.
-- The FiiO Melody control web page open in a tab. (At time of writing the
-  user reports it under FiiO's control site; check the device's product
-  page for the canonical URL.)
+- The FiiO Melody control web page open in a tab. (Check the device's
+  product page for the canonical URL.)
 
 ## The connect–disconnect dance
 
@@ -94,50 +122,59 @@ For each test:
 
 ## Recommended order
 
-Run tests in this order on a first pass. Earlier tests are read-only or
-trivially reversible; later tests are destructive.
+The library has already been hardware-verified; this order is the most
+efficient way to confirm the findings still hold on your unit. Earlier
+tests are read-only; later tests are destructive.
 
-1. **Test 1 — dump current state.** Confirms the device is reachable and
-   captures the starting EQ for reference. Pipe this to a file if you
-   want a backup: `melody-peq dump > ~/melody-pre-test.txt`.
-2. **Test 2 — probe preset names.** The single most informative test:
-   it reads `get_preset_name()` across all candidate IDs in one pass.
-   Whichever IDs return the names you set in the web (e.g. `HIFIMAN`,
-   `FT5...`, `FH3`) are the device's real USER slots.
-3. **Tests 3, 4, 5 — `set_preset(7|8|9)`.** Confirm whether the
-   low-numbered IDs actually switch the active preset on Melody, as
-   suggested by the web UI's tile layout.
-4. **Tests 9, 10 — `set_preset(160)` / `set_user_slot(1)`.** Verify
-   whether the documented K13 R2R USER slot IDs (160–162) do anything
-   on Melody, or whether they fall back to bypass.
-5. **Test 8 — `set_preset(240)`.** Confirms the bypass mechanism. The
-   web UI should highlight **Close EQ**.
-6. **Tests 6, 7 — `set_eq_enabled(False)` / `(True)`.** Verifies whether
-   the silent `EQ_SWITCH` SET actually changes the device state, even
-   though there is no response.
+1. **Test 1 — dump current state.** Confirms the device is reachable.
+   `EQ enabled` should print `unknown (no response)`. Save a snapshot
+   for restore if needed: `melody-peq dump > ~/melody-pre-test.txt`.
+2. **Test 2 — probe preset names.** Expect `160`/`161`/`162` to return
+   your USER slot names; `0..10` to return garbage placeholders. If the
+   USER slot names appear at IDs other than `160..162`, the library's
+   `get_user_slot_name()` mapping is wrong for your unit — open an issue.
+3. **Tests 3, 4, 5 — `set_preset(7|8|9)`.** Web UI should highlight
+   HIFIMAN, FT5, FH3 (or whatever your USER slot tiles are named).
+   If any of these activate **Close EQ** instead, the activation-ID
+   mapping for USER slots differs on your unit.
+4. **Test 8 — `set_preset(240)`.** Web UI should highlight **Close EQ**
+   (solid red, not just a border).
+5. **Tests 9, 10 — `set_preset(160)` / `set_user_slot(1)`.** Expected
+   to either activate USER1 (matches our verification — `set_user_slot`
+   wraps to `set_preset(7)` internally) or fall back to bypass for the
+   raw `set_preset(160)` form.
+6. **Tests 6, 7 — `set_eq_enabled(False)` / `(True)`.** No web change
+   expected — Melody ignores `EQ_SWITCH`. Useful to confirm the
+   no-response is still the case.
 7. **Tests 11, 12 — `set_preamp`.** Web slider should move.
-8. **Test 13 — `set_band(0, 30 Hz, +12 dB, …)`.** Extreme low-shelf
-   boost — Band 0 in the web should jump to +12 dB. Audible if music
-   is playing.
-9. **Test 14 — `save_to_user(1)`.** Persists current EQ to USER1.
-   Combine with the reboot test below.
+8. **Test 13 — `set_band(0, 30 Hz, +12 dB, …)`.** Web Home tab: Band 1
+   should jump to 30 Hz, +12 dB, Q=0.70, LS. Audible if music is playing.
+9. **Test 14 — `save_to_user(1)`.** Persists current live EQ to USER1
+   (overwrites HIFIMAN — make sure that slot is acceptable to lose).
+   Then run test 4 (`set_preset(8)`), then test 3 (`set_preset(7)`),
+   then test 1 again — Band 0 should still be the modified value.
+   That round-trip confirms the slot reload from EEPROM works.
 10. **Reboot persistence (manual).** Unplug the Melody, wait 10 s, plug
-    back in, run Test 1. Confirm the USER1 contents survived.
+    back in, run test 1. The save_to_user modification should still be
+    there. This is the strongest correctness signal.
 11. **Test 16 — `reset_eq()`.** Destructive. Flattens the active slot.
     Run last; you'll need to redo any tuning afterwards.
 
 ## Reporting findings
 
-After a session, three places benefit from your notes:
+After a session:
 
-- **`melody-test-log.txt`** — already auto-populated, no action needed.
+- **`melody-test-log.txt`** — auto-populated, attach this to any issue
+  or PR you open.
 - **`docs/PROTOCOL.md` "Melody-specific notes"** — file a PR adding any
-  newly-confirmed mapping (e.g. "USER slots live at 7–9, not 160–162").
-- **`CHANGELOG.md`** — under "Verified on" / "Known limitations".
+  newly-observed mapping that differs from what is already documented.
+- **`CHANGELOG.md`** — under "Verified on" if your unit confirms the
+  existing findings on a new OS / hidapi version; under "Known
+  limitations" if you found something new.
 
 If a test produces a result that contradicts the library's current
 behaviour, that is a bug — open an issue with the relevant log lines
-and (if relevant) a screenshot of the web UI.
+and a screenshot of the web UI.
 
 ## Troubleshooting
 
@@ -147,4 +184,5 @@ and (if relevant) a screenshot of the web UI.
 | `Failed to open Melody HID device` on Linux | udev rule missing | See [`INSTALL.ko.md`](INSTALL.ko.md) §3 |
 | Web UI shows stale state after a SET | Browser cached previous read | Click **Refresh** in the web UI |
 | Web UI's **Connect** button does nothing | Python still holds the device, or browser lost WebHID permission | Quit Python (or wait for `device closed.` line); re-grant permission on the lock icon if needed |
-| Active preset tile stays the same after `set_preset(N)` | `N` is not a valid preset on Melody; device may have bypassed | Try the next candidate ID; check **Close EQ** highlight state |
+| `active preset: 0` despite `set_preset(7)` | Expected — `get_preset()` reverts to 0 ("Personal/Modified") after any programmatic SET. The bands are still loaded correctly | Verify by checking `Band 0..9` output against expected slot contents |
+| `set_preset(N)` made **Close EQ** highlight in web | `N` is not a valid Melody activation ID; firmware dropped to bypass | Use IDs `0..9` or `240` only |

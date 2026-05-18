@@ -66,14 +66,23 @@ These are observed behaviours on real Melody hardware, not assumptions:
   - `get_eq_enabled()` returns `None` on Melody (not `False`).
   - `set_eq_enabled(...)` will appear to "succeed" at the call site but the
     library cannot verify the change took effect.
-  - The mechanism Melody actually uses for EQ bypass is undocumented;
-    `set_preset(240)` (bypass) may be the intended route.
+  - The intended bypass mechanism is `set_preset(240)` — verified to
+    highlight the web UI's **Close EQ** tile.
 - **The documented preset ID set is wrong for Melody.** The K13 R2R doc says
   USER slots live at `160..162`; on Melody they live at activation IDs
-  `7..9`, and `160..162` are the (separate) name-storage addresses. Earlier
-  observations of "preset 0" and "preset 9" simply meant the active preset
-  was a factory preset or a USER slot — not a mystery. See the Verified
-  facts section above for the full mapping.
+  `7..9`, and `160..162` are the (separate) name-storage addresses (see
+  the Verified facts section above). `save_to_user(slot)` was also wrong
+  in this regard — it now sends activation ID `7..9` internally and is
+  hardware-verified to persist across USB power cycles.
+- **`get_preset()` is a "Personal / Modified" indicator, not a "current
+  slot" query** on Melody. Verified per-scenario behaviour:
+  - Web UI tile click → returns that tile's ID (Jazz → 0, Pop → 1, …).
+  - Library `set_preset(N)` call → returns `0` (even though slot N's
+    bands are correctly loaded into live EQ).
+  - Any `set_band(...)` write → returns `0`.
+  - After `save_to_user(...)` + USB power cycle → returns `0`.
+  Track active slot in application state, not via `get_preset()`. The
+  band content (`get_all_bands()`) is always accurate.
 - **Non-zero "padding" bytes** appear in GET responses where the K13
   protocol documents `0x00` (byte 3 of the frame, and the byte before the
   `0xEE` stop). Our parser ignores these — they are likely Melody

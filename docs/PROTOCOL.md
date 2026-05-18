@@ -221,9 +221,14 @@ HID OUT report (65 bytes total):
   Other command codes exist in the protocol (firmware update, audio routing,
   etc.) and sending those incorrectly may render the device unusable.
 - `EQ_SAVE` is the only persisting operation. Without it, changes are lost on
-  reboot.
-- Selecting a factory preset (`0..10`) makes subsequent `EQ_BAND` writes
-  ineffective on some firmware versions — switch to a USER slot first.
+  reboot. On Melody, `save_to_user(slot=1..3)` translates to the activation
+  ID (`bytes([7|8|9])`) — sending the raw slot number drops the device to
+  bypass without writing anything.
+- On Melody, `EQ_BAND` writes successfully modify the live EQ regardless of
+  which preset is currently active; the change is then persisted to the
+  active slot when you call `EQ_SAVE`. (On some K13 R2R firmware versions
+  `EQ_BAND` writes were reportedly ineffective while a factory preset was
+  active — this has not been observed on Melody.)
 - This library hard-refuses to operate on any non-Melody FiiO device, even
   though the protocol itself is shared. If you want to use this protocol on
   another device, fork the project and lift the identity check.
