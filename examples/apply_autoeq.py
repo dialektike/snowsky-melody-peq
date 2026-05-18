@@ -23,6 +23,10 @@ def main() -> int:
 
     with MelodyPEQ() as dev:
         n = dev.get_band_count()
+        if n is None:
+            print("Could not read the device's PEQ band count; aborting.",
+                  file=sys.stderr)
+            return 2
         if len(bands) > n:
             print(f"Melody has only {n} bands; using the first {n}.", file=sys.stderr)
             bands = bands[:n]
