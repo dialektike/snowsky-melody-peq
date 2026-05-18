@@ -40,11 +40,20 @@ All three should pass cleanly before opening a PR.
 The library has been smoke-tested on macOS with a real SnowSky Melody
 (read-side only — see `CHANGELOG.md` for what's verified). Write-side
 verification — particularly `save_to_user` persistence across reboot — is
-still open. If you have a Melody, please open an issue or PR with:
+still open.
+
+The end-to-end procedure lives in
+[`docs/HARDWARE_TESTING.md`](docs/HARDWARE_TESTING.md) (Korean version:
+[`docs/HARDWARE_TESTING.ko.md`](docs/HARDWARE_TESTING.ko.md)). It walks
+through using `examples/hardware_test.py` together with the FiiO web UI
+as visual ground-truth. Please follow that order on a first pass.
+
+When you open an issue or PR, please include:
 
 - Output of `melody-peq dump`
 - USB product string (`python -c "import hid; print(hid.enumerate(0x2972,0))"`)
   so we can confirm the identity-check word-boundary regex still matches
+- Contents of `melody-test-log.txt` from your `hardware_test.py` session
 - Confirmation that `apply` followed by `save_to_user` persists after reboot
 - Any new Preset IDs / mystery bytes observed in responses — these inform
   the Melody-specific notes in `docs/PROTOCOL.md`
