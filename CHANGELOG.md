@@ -37,9 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `set_user_slot`, `save_to_user`, `reset_eq`, `apply_autoeq`,
   `get_user_slot_name`, `list_factory_presets`) for Claude / Anthropic
   tool calling. `mcp-snowsky-melody` console script registered. Tool
-  reference: `docs/MCP_TOOLS.md`. Previously lived in a separate
-  repository (`mcp-snowsky-melody`); folded in to remove cross-repo
-  version-coordination overhead.
+  reference: `docs/MCP_TOOLS.md`.
 
 ### Defensive validation
 - `Band.__post_init__` rejects out-of-range freq / gain / Q and coerces
