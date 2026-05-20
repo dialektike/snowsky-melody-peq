@@ -75,14 +75,12 @@ These are observed behaviours on real Melody hardware, not assumptions:
   in this regard — it now sends activation ID `7..9` internally and is
   hardware-verified to persist across USB power cycles.
 - **`get_preset()` is a "Personal / Modified" indicator, not a "current
-  slot" query** on Melody. Verified per-scenario behaviour:
-  - Web UI tile click → returns that tile's ID (Jazz → 0, Pop → 1, …).
-  - Library `set_preset(N)` call → returns `0` (even though slot N's
-    bands are correctly loaded into live EQ).
-  - Any `set_band(...)` write → returns `0`.
-  - After `save_to_user(...)` + USB power cycle → returns `0`.
-  Track active slot in application state, not via `get_preset()`. The
-  band content (`get_all_bands()`) is always accurate.
+  slot" query** on Melody. It only returns a real slot ID when the user
+  just clicked that tile in the FiiO web UI; any programmatic
+  `set_preset()` / `set_band()` / `save_to_user()` call reverts it to
+  `0`. The band content (`get_all_bands()`) is always accurate — track
+  the active slot in application state instead. Full per-scenario table
+  in [`PROTOCOL.md`](PROTOCOL.md) under "Dual preset-ID scheme" → "CMD.EQ_PRESET GET".
 - **Non-zero "padding" bytes** appear in GET responses where the K13
   protocol documents `0x00` (byte 3 of the frame, and the byte before the
   `0xEE` stop). Our parser ignores these — they are likely Melody
