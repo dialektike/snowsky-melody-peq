@@ -106,6 +106,43 @@ melody-peq preset 240             # bypass EQ
 
 See [`examples/`](examples/) for more.
 
+## MCP server (Claude / Anthropic tool calling)
+
+An optional MCP server is shipped in this same package so Claude Desktop, Claude Code, and any other MCP client can read and write the Melody's EQ as tools.
+
+Install the extra:
+
+```bash
+pip install -e ".[mcp]"      # in this checkout, or
+pip install snowsky-melody-peq[mcp]
+```
+
+That registers a console script `mcp-snowsky-melody`. Find its absolute path:
+
+```bash
+which mcp-snowsky-melody
+```
+
+Register it with your MCP client. For Claude Desktop, add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "snowsky-melody": {
+      "command": "/absolute/path/to/mcp-snowsky-melody"
+    }
+  }
+}
+```
+
+For Claude Code:
+
+```bash
+claude mcp add snowsky-melody -- /absolute/path/to/mcp-snowsky-melody
+```
+
+Full tool reference: [`docs/MCP_TOOLS.md`](docs/MCP_TOOLS.md).
+
 ## API at a glance
 
 | Method | Purpose |

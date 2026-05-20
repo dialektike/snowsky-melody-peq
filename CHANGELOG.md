@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI assistant guide in `docs/AI_ASSISTANT_GUIDE.md`.
 - PEP 561 `py.typed` marker so downstream type checkers see the type hints.
 - `[tool.mypy]` config in `pyproject.toml`; `mypy src/` is clean.
+- Optional MCP server (`snowsky_melody_peq.mcp_server`) shipped under
+  the `mcp` extra (`pip install snowsky-melody-peq[mcp]`). Exposes 11
+  tools (`get_state`, `get_band`, `set_band`, `set_preamp`, `set_preset`,
+  `set_user_slot`, `save_to_user`, `reset_eq`, `apply_autoeq`,
+  `get_user_slot_name`, `list_factory_presets`) for Claude / Anthropic
+  tool calling. `mcp-snowsky-melody` console script registered. Tool
+  reference: `docs/MCP_TOOLS.md`. Previously lived in a separate
+  repository (`mcp-snowsky-melody`); folded in to remove cross-repo
+  version-coordination overhead.
 
 ### Defensive validation
 - `Band.__post_init__` rejects out-of-range freq / gain / Q and coerces
