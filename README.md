@@ -150,7 +150,7 @@ Full tool reference: [`docs/MCP_TOOLS.md`](docs/MCP_TOOLS.md).
 | `get_band_count() / get_eq_enabled() / get_preset() / get_preamp()` | Read state — returns `T \| None` (`None` = no device response) |
 | `get_band(i) / get_all_bands()` | Read PEQ bands |
 | `get_preset_name(i) / get_user_slot_name(1..3)` | Read preset/slot stored name |
-| `set_eq_enabled(on) / set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | Set state |
+| `set_eq_enabled(on)` *(no-op on Melody — see quirks)* / `set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | Set state |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | Write PEQ |
 | `save_to_user(slot) / reset_eq()` | Persist (slots 1-3) or clear |
 

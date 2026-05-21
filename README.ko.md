@@ -151,7 +151,7 @@ claude mcp add snowsky-melody -- /절대/경로/mcp-snowsky-melody
 | `get_band_count() / get_eq_enabled() / get_preset() / get_preamp()` | 상태 읽기 — `T \| None` 반환 (`None` = 기기 무응답) |
 | `get_band(i) / get_all_bands()` | PEQ 밴드 읽기 |
 | `get_preset_name(i) / get_user_slot_name(1..3)` | 프리셋/슬롯에 저장된 이름 읽기 |
-| `set_eq_enabled(on) / set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | 상태 설정 |
+| `set_eq_enabled(on)` *(Melody에서 무동작 — quirks 참조)* / `set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | 상태 설정 |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | PEQ 쓰기 |
 | `save_to_user(slot) / reset_eq()` | 영구 저장(슬롯 1-3) 또는 초기화 |
 
