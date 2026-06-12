@@ -84,16 +84,19 @@ with MelodyPEQ() as dev:
 Applying an AutoEQ profile:
 
 ```python
-from snowsky_melody_peq import MelodyPEQ, parse_autoeq
+from snowsky_melody_peq import MelodyPEQ, parse_autoeq_file
 
-preamp, bands = parse_autoeq("HE-X4_ParametricEQ.txt")
+preamp, bands = parse_autoeq_file("HE-X4_ParametricEQ.txt")
 with MelodyPEQ() as dev:
-    n = dev.get_band_count()
-    dev.set_user_slot(1)
-    dev.set_preamp(preamp)
-    dev.set_bands(bands[:n])
-    dev.save_to_user(slot=1)
+    written, count = dev.apply_profile(preamp, bands, slot=1)
+    print(f"Wrote {written}/{count} bands to USER1")
 ```
+
+`parse_autoeq_file()` reads a file and raises `FileNotFoundError` on a bad
+path; `parse_autoeq()` takes the file *contents* as a string (a `str` is
+never interpreted as a path). `apply_profile()` truncates the profile to
+the device's band count, pads the remaining bands flat (0 dB) so EQ
+previously saved in the slot can't bleed through, and persists the result.
 
 From the shell:
 
@@ -152,12 +155,23 @@ Full tool reference: [`docs/MCP_TOOLS.md`](docs/MCP_TOOLS.md).
 | `get_preset_name(i) / get_user_slot_name(1..3)` | Read preset/slot stored name |
 | `set_eq_enabled(on)` *(no-op on Melody — see quirks)* / `set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | Set state |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | Write PEQ |
+| `apply_profile(preamp, bands, slot)` | Apply a whole profile: truncate to device band count, pad the rest flat, persist to the slot |
 | `save_to_user(slot) / reset_eq()` | Persist (slots 1-3) or clear |
+
+Module-level helpers: `parse_autoeq(text_or_path)` parses AutoEQ
+ParametricEQ content (`str` = literal contents, `Path` = file);
+`parse_autoeq_file(path)` reads a file and fails loudly on a missing path.
+`OFF` filter lines are skipped and the surviving bands are re-indexed
+sequentially from 0.
 
 `FilterType` values: `PEAK`, `LOW_SHELF`, `HIGH_SHELF`, `BAND_PASS`, `LOW_PASS`, `HIGH_PASS`, `ALL_PASS`.
 
 `Band` validates its arguments at construction: `freq` 20–20000 Hz, `gain`
-±24 dB, `Q` 0.01–100. Out-of-range values raise `ValueError`.
+±24 dB, `Q` 0.01–100. Out-of-range values raise `ValueError`, and
+`set_band()` runs the same checks before anything reaches the wire. The
+read path is deliberately lenient: `get_band()` / `get_all_bands()` report
+whatever the device sent, even outside these ranges (a factory-fresh or
+freshly reset band can legally report `freq=0`).
 
 The Melody exposes USER slots 1–3. **Activation IDs are `7..9`** (not the `160..162` of the K13 R2R docs — sending those on Melody causes bypass). Preset ID `240` is the explicit bypass. Factory presets occupy IDs `0..6` (Jazz, Pop, Rock, Dance, R&B, Classic, Hip-Pop) and are read-only.
 

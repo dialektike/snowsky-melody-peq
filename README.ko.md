@@ -85,16 +85,19 @@ with MelodyPEQ() as dev:
 AutoEQ 프로파일 적용:
 
 ```python
-from snowsky_melody_peq import MelodyPEQ, parse_autoeq
+from snowsky_melody_peq import MelodyPEQ, parse_autoeq_file
 
-preamp, bands = parse_autoeq("HE-X4_ParametricEQ.txt")
+preamp, bands = parse_autoeq_file("HE-X4_ParametricEQ.txt")
 with MelodyPEQ() as dev:
-    n = dev.get_band_count()
-    dev.set_user_slot(1)
-    dev.set_preamp(preamp)
-    dev.set_bands(bands[:n])
-    dev.save_to_user(slot=1)
+    written, count = dev.apply_profile(preamp, bands, slot=1)
+    print(f"USER1에 {written}/{count} 밴드 기록")
 ```
+
+`parse_autoeq_file()`은 파일을 읽으며 경로가 잘못되면 `FileNotFoundError`를
+던집니다. `parse_autoeq()`는 파일의 *내용*을 문자열로 받습니다 (`str`은
+절대 경로로 해석되지 않습니다). `apply_profile()`은 프로파일을 기기 밴드
+수에 맞게 자르고, 남는 밴드를 플랫(0 dB)으로 채워 슬롯에 이전에 저장돼
+있던 EQ가 새 프로파일 밑에 남지 않도록 한 뒤, 영구 저장까지 수행합니다.
 
 셸에서:
 
@@ -153,11 +156,17 @@ claude mcp add snowsky-melody -- /절대/경로/mcp-snowsky-melody
 | `get_preset_name(i) / get_user_slot_name(1..3)` | 프리셋/슬롯에 저장된 이름 읽기 |
 | `set_eq_enabled(on)` *(Melody에서 무동작 — quirks 참조)* / `set_user_slot(1..3) / set_preset(id) / set_preamp(db)` | 상태 설정 |
 | `set_band(i, freq, gain, q, filter_type) / set_bands(list)` | PEQ 쓰기 |
+| `apply_profile(preamp, bands, slot)` | 프로파일 일괄 적용: 기기 밴드 수로 자르고, 남는 밴드를 플랫으로 채운 뒤 슬롯에 영구 저장 |
 | `save_to_user(slot) / reset_eq()` | 영구 저장(슬롯 1-3) 또는 초기화 |
+
+모듈 수준 헬퍼: `parse_autoeq(text_or_path)`는 AutoEQ ParametricEQ 내용을
+파싱합니다 (`str` = 내용 그대로, `Path` = 파일). `parse_autoeq_file(path)`는
+파일을 읽으며 경로가 없으면 즉시 예외를 던집니다. `OFF` 필터 줄은
+건너뛰고, 남은 밴드는 0부터 순차 인덱스를 다시 부여합니다.
 
 `FilterType` 값: `PEAK`, `LOW_SHELF`, `HIGH_SHELF`, `BAND_PASS`, `LOW_PASS`, `HIGH_PASS`, `ALL_PASS`.
 
-`Band`는 생성 시점에 인자 범위를 검증합니다: `freq` 20–20000 Hz, `gain` ±24 dB, `Q` 0.01–100. 범위를 벗어나면 `ValueError`를 던집니다.
+`Band`는 생성 시점에 인자 범위를 검증합니다: `freq` 20–20000 Hz, `gain` ±24 dB, `Q` 0.01–100. 범위를 벗어나면 `ValueError`를 던지며, `set_band()`도 와이어에 쓰기 전에 동일한 검증을 수행합니다. 반대로 읽기 경로는 의도적으로 관대합니다: `get_band()` / `get_all_bands()`는 기기가 보고한 값을 범위 밖이라도 그대로 반환합니다 (초기화 직후 밴드는 `freq=0`을 보고할 수 있습니다).
 
 Melody는 USER 슬롯 1–3을 제공합니다. **활성화 ID는 `7..9`입니다** (K13 R2R 문서의 `160..162`가 아닙니다 — 그 값들을 Melody에 보내면 bypass로 떨어집니다). 프리셋 ID `240`은 명시적 bypass. 공장 프리셋은 `0..6` (Jazz, Pop, Rock, Dance, R&B, Classic, Hip-Pop)이고 읽기 전용입니다.
 
