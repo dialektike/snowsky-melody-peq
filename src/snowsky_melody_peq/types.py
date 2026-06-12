@@ -1,8 +1,8 @@
-"""Public data types for fiio-peq."""
+"""Public data types for snowsky-melody-peq."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from enum import IntEnum
 
 
@@ -27,6 +27,13 @@ class Band:
         gain:  Gain in dB (-24.0..+24.0). Resolution: 0.1 dB.
         q:     Q factor (0.01..100.0). Resolution: 0.01.
         filter_type: Biquad filter shape.
+        validate: Init-only flag. ``True`` (default) applies the range
+            checks below — use this for every band that is *going to* the
+            device. ``False`` skips them — use this only when constructing
+            a Band from values *reported by* the device, which may legally
+            sit outside the write-side ranges (e.g. ``freq=0`` on a
+            factory-fresh or reset band) and must be surfaced to the
+            caller rather than raise.
 
     Range checks fire in ``__post_init__`` so that nonsensical values are
     rejected at the Python layer rather than silently wrapping in the
@@ -37,8 +44,13 @@ class Band:
     gain: float
     q: float
     filter_type: FilterType = FilterType.PEAK
+    validate: InitVar[bool] = True
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, validate: bool) -> None:
+        if not isinstance(self.filter_type, FilterType):
+            self.filter_type = FilterType(self.filter_type)
+        if not validate:
+            return
         if self.index < 0:
             raise ValueError(f"Band index must be >= 0, got {self.index}")
         if not 20 <= self.freq <= 20000:
@@ -47,8 +59,6 @@ class Band:
             raise ValueError(f"gain {self.gain} dB out of range -24.0..+24.0")
         if not 0.01 <= self.q <= 100.0:
             raise ValueError(f"Q {self.q} out of range 0.01..100.0")
-        if not isinstance(self.filter_type, FilterType):
-            self.filter_type = FilterType(self.filter_type)
 
     def __str__(self) -> str:
         return (f"Band {self.index}: {self.freq}Hz {self.gain:+.1f}dB "

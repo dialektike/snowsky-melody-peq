@@ -18,7 +18,7 @@ Example:
     ...     dev.save_to_user(slot=1)
 """
 
-from .autoeq import parse_autoeq
+from .autoeq import parse_autoeq, parse_autoeq_file
 from .controller import MelodyPEQ, MelodyPEQError, NotAMelodyError
 from .types import Band, FilterType
 
@@ -30,5 +30,6 @@ __all__ = [
     "Band",
     "FilterType",
     "parse_autoeq",
+    "parse_autoeq_file",
     "__version__",
 ]

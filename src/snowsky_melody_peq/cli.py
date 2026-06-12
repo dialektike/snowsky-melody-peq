@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .autoeq import parse_autoeq
+from .autoeq import parse_autoeq_file
 from .controller import MELODY_USER_SLOTS, MelodyPEQ, MelodyPEQError
 
 
@@ -39,25 +39,19 @@ def _cmd_dump(_: argparse.Namespace) -> int:
 
 
 def _cmd_apply(args: argparse.Namespace) -> int:
-    preamp, bands = parse_autoeq(Path(args.file))
+    preamp, bands = parse_autoeq_file(Path(args.file))
     print(f"Parsed: preamp={preamp:+.1f} dB, {len(bands)} bands")
     with MelodyPEQ() as dev:
-        n = dev.get_band_count()
-        if n is None:
-            raise MelodyPEQError(
-                "Could not read the device's PEQ band count; refusing to apply."
-            )
-        if len(bands) > n:
-            print(f"Warning: Melody has {n} bands; truncating from {len(bands)}",
+        # apply_profile() truncates to the device's band count, pads the
+        # remaining bands flat (so old slot contents can't bleed through),
+        # and persists to the slot. set_eq_enabled() is a silent no-op on
+        # Melody — bypass is controlled via set_preset(240); see
+        # docs/PROTOCOL.md.
+        written, count = dev.apply_profile(preamp, bands, args.slot)
+        if written < len(bands):
+            print(f"Warning: Melody has {count} bands; truncated from {len(bands)}",
                   file=sys.stderr)
-            bands = bands[:n]
-        dev.set_user_slot(args.slot)
-        # set_eq_enabled() is a silent no-op on Melody — bypass is
-        # controlled via set_preset(240). See docs/PROTOCOL.md.
-        dev.set_preamp(preamp)
-        dev.set_bands(bands)
-        dev.save_to_user(args.slot)
-        print(f"Saved to USER{args.slot}")
+        print(f"Saved {written} band(s) to USER{args.slot}")
     return 0
 
 

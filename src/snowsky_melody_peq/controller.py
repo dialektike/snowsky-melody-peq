@@ -258,6 +258,14 @@ class MelodyPEQ:
         return decode_gain(p[1][0], p[1][1]) if p and len(p[1]) >= 2 else None
 
     def get_band(self, index: int) -> Band | None:
+        """Read a single band, or None if the device did not respond.
+
+        The returned Band is built with ``validate=False``: values are
+        reported exactly as the device sent them, even if they fall
+        outside the write-side ranges (a factory-fresh or freshly reset
+        band can legally report ``freq=0``). Reading must never raise on
+        what the hardware actually contains.
+        """
         resp = self._get(CMD.EQ_BAND, bytes([index]))
         p = parse_response(resp) if resp else None
         if not p or len(p[1]) < 8:
@@ -269,6 +277,7 @@ class MelodyPEQ:
             freq        = decode_u16(d[3], d[4]),
             q           = decode_u16(d[5], d[6]) / 100.0,
             filter_type = FilterType(d[7]),
+            validate    = False,
         )
 
     def get_all_bands(self) -> list[Band]:
@@ -350,13 +359,21 @@ class MelodyPEQ:
         q: float,
         filter_type: FilterType = FilterType.PEAK,
     ) -> None:
-        """Set a single band. Not persisted until save_to_user()."""
-        g_hi, g_lo = encode_gain(gain)
-        f_hi, f_lo = encode_u16(freq)
-        q_hi, q_lo = encode_u16(int(round(q * 100)))
+        """Set a single band. Not persisted until save_to_user().
+
+        Raises ValueError if the parameters fall outside the documented
+        ranges (freq 20..20000 Hz, gain ±24 dB, Q 0.01..100) — the same
+        checks as constructing a :class:`Band` directly, so values that
+        the device would misinterpret never reach the wire.
+        """
+        band = Band(index=index, freq=freq, gain=gain, q=q, filter_type=filter_type)
+        g_hi, g_lo = encode_gain(band.gain)
+        f_hi, f_lo = encode_u16(band.freq)
+        q_hi, q_lo = encode_u16(int(round(band.q * 100)))
         self._set(
             CMD.EQ_BAND,
-            bytes([index, g_hi, g_lo, f_hi, f_lo, q_hi, q_lo, int(filter_type)]),
+            bytes([band.index, g_hi, g_lo, f_hi, f_lo, q_hi, q_lo,
+                   int(band.filter_type)]),
         )
 
     def set_bands(self, bands: list[Band]) -> None:
@@ -380,3 +397,54 @@ class MelodyPEQ:
     def reset_eq(self) -> None:
         """Clear EQ on the currently selected slot."""
         self._set(CMD.EQ_RESET)
+
+    # ───────────────────────── high-level API ─────────────────────────
+
+    def apply_profile(
+        self, preamp: float, bands: list[Band], slot: int
+    ) -> tuple[int, int]:
+        """Apply a complete PEQ profile to a USER slot and persist it.
+
+        Switches to ``slot``, writes ``preamp``, writes ``bands``
+        (re-indexed sequentially from 0 regardless of their incoming
+        ``index`` values, truncated to the device's band count), pads
+        every remaining device band with a flat 0 dB band, then calls
+        :meth:`save_to_user`.
+
+        The flat padding matters: a USER slot retains whatever was last
+        saved to it, so applying a 5-band profile to a 10-band device
+        without padding would leave the old bands 5..9 audibly active
+        underneath the new profile.
+
+        Returns
+        -------
+        (bands_written, device_band_count)
+            ``bands_written < len(bands)`` means the profile was
+            truncated to fit the device.
+
+        Raises
+        ------
+        MelodyPEQError
+            If the device's band count cannot be read — applying blind
+            could write past the device's real band range.
+        ValueError
+            If ``slot`` is not 1, 2, or 3.
+        """
+        count = self.get_band_count()
+        if count is None:
+            raise MelodyPEQError(
+                "Could not read the device's PEQ band count; refusing to apply."
+            )
+        written = [
+            Band(index=i, freq=b.freq, gain=b.gain, q=b.q, filter_type=b.filter_type)
+            for i, b in enumerate(bands[:count])
+        ]
+        flat = [
+            Band(index=i, freq=1000, gain=0.0, q=1.0)
+            for i in range(len(written), count)
+        ]
+        self.set_user_slot(slot)
+        self.set_preamp(preamp)
+        self.set_bands([*written, *flat])
+        self.save_to_user(slot)
+        return len(written), count

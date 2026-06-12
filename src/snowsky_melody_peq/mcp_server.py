@@ -208,14 +208,20 @@ def apply_autoeq(parametric_eq_text: str, slot: int = 1) -> dict[str, Any]:
     """**Destructive.** Apply an AutoEQ ``ParametricEQ.txt`` to a USER slot.
 
     Switches to the target USER slot, writes the parsed pre-amp and
-    bands, then calls ``save_to_user(slot)`` so the result survives reboot.
-    The text argument is the literal contents of a ParametricEQ.txt file
-    from https://github.com/jaakkopasanen/AutoEq.
+    bands, pads any remaining device bands flat (0 dB) so the slot's
+    previous EQ cannot bleed through underneath the new profile, then
+    calls ``save_to_user(slot)`` so the result survives reboot.
 
-    Band-count truncation: if the source file has more bands than the
-    device exposes (the Melody has 10), the extra bands are dropped
-    silently at the wire — typically the highest-frequency corrections.
-    The return value carries enough information to detect this:
+    ``parametric_eq_text`` is always interpreted as the literal contents
+    of a ParametricEQ.txt file from
+    https://github.com/jaakkopasanen/AutoEq — never as a filesystem
+    path. ``OFF`` filter lines are skipped and the remaining bands are
+    re-indexed sequentially.
+
+    Band-count truncation: if the source has more bands than the device
+    exposes (the Melody has 10), the extra bands are dropped — typically
+    the highest-frequency corrections. The return value carries enough
+    information to detect this:
 
     Returns:
         ok:            always True if no exception was raised.
@@ -233,16 +239,7 @@ def apply_autoeq(parametric_eq_text: str, slot: int = 1) -> dict[str, Any]:
     preamp, bands = parse_autoeq(parametric_eq_text)
     parsed_count = len(bands)
     with MelodyPEQ() as d:
-        n = d.get_band_count()
-        if n is None:
-            raise RuntimeError("Could not read the device's band count; aborting.")
-        if parsed_count > n:
-            bands = bands[:n]
-        d.set_user_slot(slot)
-        d.set_preamp(preamp)
-        d.set_bands(bands)
-        d.save_to_user(slot)
-    written_count = len(bands)
+        written_count, _device_count = d.apply_profile(preamp, bands, slot)
     return {
         "ok":            True,
         "slot":          slot,
