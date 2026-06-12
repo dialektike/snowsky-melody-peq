@@ -98,7 +98,9 @@ The library uses [`hidapi`](https://github.com/libusb/hidapi). Key consequences:
 ## Public API surface
 
 ```
-from snowsky_melody_peq import MelodyPEQ, Band, FilterType, parse_autoeq
+from snowsky_melody_peq import (
+    MelodyPEQ, Band, FilterType, parse_autoeq, parse_autoeq_file,
+)
 ```
 
 - `MelodyPEQ()` — context manager, opens/closes the device. **No** `name_filter`
@@ -111,16 +113,36 @@ from snowsky_melody_peq import MelodyPEQ, Band, FilterType, parse_autoeq
   - `get_eq_enabled() -> bool | None` (always `None` on Melody — see quirks)
   - `get_preset() -> int | None`
   - `get_preamp() -> float | None`
-  - `get_band(i) -> Band | None`
+  - `get_band(i) -> Band | None` (values are reported exactly as the
+    device sent them, even outside the write-side ranges — a reset band
+    can legally report `freq=0`; the returned `Band` is built with
+    `validate=False`)
   - `get_preset_name(i) -> str | None` (raw — Melody only returns names
     for `i in {160, 161, 162}`)
   - `get_user_slot_name(slot) -> str | None` (slot 1/2/3; wraps the
     raw call with the right ID mapping)
   - `get_all_bands() -> list[Band]` (empty list when count is unreadable)
 - Write API: `set_eq_enabled(bool) / set_user_slot(1..3) / set_preset(id) / set_preamp(db) / set_band(...) / set_bands([...]) / save_to_user(slot=1..3) / reset_eq()`.
+  `set_band()` routes through `Band` validation, so out-of-range values
+  raise `ValueError` before anything reaches the wire.
+- `apply_profile(preamp, bands, slot) -> (bands_written, device_band_count)`
+  — the one-call way to apply a whole profile: switches to the USER slot,
+  writes the pre-amp, re-indexes and truncates the bands to the device's
+  band count, **pads every remaining device band flat (0 dB)** so stale
+  EQ saved in the slot cannot bleed through, then persists with
+  `save_to_user()`. Prefer this over hand-rolling the
+  switch/write/save sequence.
 - `Band` validates ranges in `__post_init__` (freq 20..20000, gain ±24 dB,
   Q 0.01..100). Construction will raise `ValueError` on out-of-range values.
-- `parse_autoeq(path_or_text)` → `(preamp_db, [Band, ...])`.
+  `Band(..., validate=False)` (init-only flag) skips the checks — reserved
+  for the read path, where device-reported values must surface as-is.
+- `parse_autoeq(source)` → `(preamp_db, [Band, ...])`. A `str` is **always
+  the literal file contents, never a path**; pass a `Path` to read a file.
+  `OFF` filter lines are skipped and the surviving bands are re-indexed
+  sequentially from 0.
+- `parse_autoeq_file(path)` → same return; reads a file and raises
+  `FileNotFoundError` on a bad path (a mistyped path fails loudly instead
+  of yielding an empty profile).
 
 CLI: `melody-peq dump | apply FILE [--slot 1..3] | preset ID | reset`.
 Valid preset IDs are 0..9 (factory/USER) and 240 (bypass). The older
@@ -135,9 +157,11 @@ Default to the patterns in `examples/`. Adapt rather than re-derive.
 
 ### "Convert this EQ format to this library"
 
-For AutoEQ text format, use `parse_autoeq()`. For REW, EqualizerAPO, or other
-formats: write a parser that produces `list[Band]` and a preamp float, then
-the rest of the pipeline is identical.
+For AutoEQ text format, use `parse_autoeq()` (literal text) or
+`parse_autoeq_file()` (file path). For REW, EqualizerAPO, or other
+formats: write a parser that produces `list[Band]` and a preamp float,
+then hand the result to `MelodyPEQ.apply_profile()` — the rest of the
+pipeline is identical.
 
 ### "It doesn't work on my device"
 
@@ -183,6 +207,15 @@ No. This project is Melody-only by design. The protocol is documented in
   must surface that way to users.
 - Changing getters back to returning silent defaults on missing response —
   that re-introduces the bug where `melody-peq dump` lied about EQ state.
+- Passing a file path as a `str` to `parse_autoeq()` — a `str` is always
+  literal content (0.2.0 behaviour). Use `parse_autoeq_file()` or a `Path`.
+- Hand-rolling the switch/write/save sequence when applying a profile to a
+  slot — use `MelodyPEQ.apply_profile()`, which owns the re-indexing,
+  truncation, and flat padding that prevent stale slot EQ from surviving
+  an apply.
+- Constructing read-path bands with validation on (or write-path bands
+  with `validate=False`) — the asymmetry is deliberate: writes must be
+  range-checked, reads must report the hardware as-is.
 
 ## When in doubt
 

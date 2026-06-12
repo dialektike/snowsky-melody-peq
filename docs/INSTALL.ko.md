@@ -43,7 +43,7 @@ pip install -e .
 
 ```bash
 (melody) $ melody-peq --version
-melody-peq 0.1.0
+melody-peq 0.2.0
 ```
 
 > **참고**: 대부분의 환경에서 hidapi는 wheel(미리 컴파일된 바이너리)로 설치되므로 추가 작업이 필요 없습니다. 만약 wheel이 없는 환경(예: 일부 ARM Linux)에서 pip install이 실패하면 빌드 도구가 필요할 수 있습니다 — 아래 트러블슈팅 참조.

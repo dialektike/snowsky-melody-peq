@@ -29,7 +29,7 @@ Reads the device's current EQ state. Returned dict:
 
 ### `get_band(index: int) -> dict | null`
 
-A single band at the given zero-based index, or `null` if the device did not return that band.
+A single band at the given zero-based index, or `null` if the device did not return that band. Values are reported exactly as the device sent them, even outside the write-side ranges — a factory-fresh or freshly reset band can legally report `freq: 0`.
 
 ### `get_user_slot_name(slot: int) -> {slot, name}`
 
@@ -88,9 +88,11 @@ Flattens the currently active slot.
 
 ### `apply_autoeq(parametric_eq_text: str, slot: int = 1) -> {ok, slot, preamp_db, bands_parsed, bands_written, truncated, destructive}`
 
-Parses an AutoEQ `ParametricEQ.txt` and writes it to the given USER slot. End-to-end: switches to the slot, sets pre-amp, writes the bands, persists with `save_to_user`. The `parametric_eq_text` argument is the literal file content, e.g. what you would get from <https://github.com/jaakkopasanen/AutoEq>.
+Parses an AutoEQ `ParametricEQ.txt` and writes it to the given USER slot. End-to-end (via `MelodyPEQ.apply_profile()`): switches to the slot, sets the pre-amp, writes the parsed bands re-indexed sequentially from 0 (`OFF` filter lines are skipped without leaving index gaps), **pads every remaining device band flat (0 dB)** so EQ previously saved in the slot cannot bleed through underneath a shorter profile, then persists with `save_to_user`.
 
-Band-count truncation: if the source has more bands than the device exposes (the Melody has 10), the surplus is dropped at the wire. The return value carries:
+The `parametric_eq_text` argument is **always interpreted as the literal file content** — never as a filesystem path — e.g. what you would get from <https://github.com/jaakkopasanen/AutoEq>.
+
+Band-count truncation: if the source has more bands than the device exposes (the Melody has 10), the surplus is dropped. The return value carries:
 
 - `bands_parsed`: number of bands read from the input text
 - `bands_written`: number actually applied to the device
