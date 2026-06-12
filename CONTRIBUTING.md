@@ -71,14 +71,25 @@ When you open an issue or PR, please include:
   the device might not respond — never collapse `None` to a default value.
 - Keep the controller and protocol layers cleanly separated — `protocol.py`
   must stay free of `hid` (or any other backend-specific) imports.
-- `Band` constructor validates ranges. If a new code path can produce
-  out-of-range values, surface that with a clear `ValueError` at the
-  boundary rather than letting it wrap silently in the wire encoding.
+- `Band` constructor validates ranges, and `set_band()` routes through it,
+  so out-of-range values never reach the wire. If a new code path can
+  produce out-of-range values, surface that with a clear `ValueError` at
+  the boundary rather than letting it wrap silently in the wire encoding.
+  The **read** path is the deliberate exception: values reported by the
+  device must be surfaced as-is via `Band(..., validate=False)` — reading
+  must never raise on what the hardware actually contains (a reset band
+  can legally report `freq=0`).
+- Anything that *applies* a profile to a slot should go through
+  `MelodyPEQ.apply_profile()` rather than hand-rolling the
+  switch/write/save sequence — it owns the re-indexing, truncation, and
+  flat padding that prevent stale slot EQ from surviving an apply.
 
 ## Testing
 
 All non-hardware code paths should have unit tests. Hardware-dependent tests
 are out of scope for CI. When you add a defensive check (range validation,
 oversize rejection, "no response" handling), add a matching test that mocks
-the relevant boundary — see `tests/test_getters_no_response.py` and
-`tests/test_types.py` for the patterns to follow.
+the relevant boundary — see `tests/test_getters_no_response.py`,
+`tests/test_types.py`, and `tests/test_validation_fixes.py` for the
+patterns to follow (the last one also shows how to capture what
+`apply_profile()` writes without hardware).

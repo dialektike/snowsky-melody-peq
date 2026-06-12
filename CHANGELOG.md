@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06
+
+### Changed (breaking)
+- `parse_autoeq(source)`: a `str` argument is now **always treated as the
+  file contents**, never as a filesystem path. Previously a single-line
+  string was heuristically probed as a path, which had two failure modes:
+  a mistyped path silently parsed as an empty profile `(0.0, [])`, and a
+  single-line string that happened to match an existing file would read
+  that file — a real concern for the MCP `apply_autoeq` tool, whose text
+  argument could be steered into reading arbitrary local files. To read a
+  file, pass a `Path` or use the new `parse_autoeq_file()`.
+- `parse_autoeq()` re-indexes the surviving bands sequentially from 0
+  after skipping `OFF` filter lines. The `Filter N` numbers in the source
+  are no longer used as device indices, so an `OFF` line in the middle of
+  a profile can no longer leave an index gap that preserves stale EQ on
+  the device.
+- `get_band()` / `get_all_bands()` no longer raise `ValueError` when the
+  device reports values outside the write-side ranges (e.g. `freq=0` on a
+  factory-fresh or freshly reset band). Device-reported values are now
+  surfaced as-is via `Band(..., validate=False)`.
+
+### Added
+- `parse_autoeq_file(path)`: reads an AutoEQ `ParametricEQ.txt` file and
+  raises the usual `FileNotFoundError` / `OSError` on a bad path, so
+  typos fail loudly instead of yielding an empty profile.
+- `MelodyPEQ.apply_profile(preamp, bands, slot)`: applies a complete
+  profile in one call — switches to the USER slot, writes the pre-amp,
+  re-indexes and truncates the bands to the device's band count, **pads
+  every remaining device band flat (0 dB)** so EQ previously saved in the
+  slot cannot bleed through underneath a shorter profile, then persists
+  with `save_to_user()`. Returns `(bands_written, device_band_count)`.
+  The CLI `apply` subcommand, the MCP `apply_autoeq` tool, and
+  `examples/apply_autoeq.py` now all share this path.
+- `Band(..., validate=False)` init-only flag for constructing bands from
+  device-reported values without the write-side range checks. The default
+  (`validate=True`) behaves exactly as before. Note: on Python 3.10/3.11,
+  `dataclasses.replace()` requires `InitVar`s to be passed explicitly
+  (fixed in 3.12), so `replace(band, ...)` on those versions needs
+  `validate=True` spelled out.
+- 13 regression tests in `tests/test_validation_fixes.py` covering all
+  four fixes below (58 tests total, up from 45).
+
+### Fixed
+- `MelodyPEQ.set_band()` now constructs a `Band` internally and therefore
+  enforces the documented ranges (freq 20–20000 Hz, gain ±24 dB,
+  Q 0.01–100) before anything reaches the wire. Previously it bypassed
+  `Band` validation entirely, so e.g. `freq=5`, `gain=30.0`, `q=0.005`
+  were encoded and sent — contradicting the MCP tool docs, which claimed
+  the library validated these ranges.
+- Applying an AutoEQ profile no longer leaves stale EQ behind, in either
+  of the two ways it previously could: index gaps from skipped `OFF`
+  filters, and untouched high bands when the profile has fewer bands than
+  the device (both fixed by the re-indexing + flat padding above).
+- A mistyped path passed to the AutoEQ parser no longer "succeeds" with
+  an empty profile (see the breaking `parse_autoeq` change above).
+- Stale `fiio-peq` / `fiio_peq` references in module docstrings
+  (`types.py`, `autoeq.py`) updated to the current package name.
+
 ## [0.1.0] - 2026-05
 
 ### Added
